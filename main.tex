@@ -1,4 +1,6 @@
-\documentclass[sigconf,10pt]{acmart}
+\documentclass[sigconf,10pt,nonacm]{acmart}
+
+\settopmatter{printacmref=false} % Removes ACM reference format
 
 
 \usepackage[utf8]{inputenc} % allow utf-8 input
@@ -87,12 +89,11 @@
 % authors names on the first line, and the last on the second line, try using
 % \AND instead of \And before the third author name.
 
+\input{texfiles/abstract}
 
 \begin{document}
 
-
 \maketitle
-\input{texfiles/abstract}
 \input{texfiles/introduction}
 \input{texfiles/background}
 \input{texfiles/guardrails}
