@@ -1,0 +1,109 @@
+\documentclass[sigconf,10pt]{acmart}
+
+
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{hyperref}       % hyperlinks
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=blue,      
+    urlcolor=blue,
+    citecolor=blue
+}
+\usepackage{url}            % simple URL typesetting
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+\usepackage{xcolor}         % colors
+\usepackage{enumitem}
+\usepackage{authblk}
+
+% Libraries for Giant Table
+\usepackage{array}
+\usepackage{amsmath}
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{changepage}
+\usepackage{multirow}
+\usepackage{wrapfig}
+\usepackage[small, compact]{titlesec}
+
+\usepackage[font={small}]{caption}
+\usepackage[export]{adjustbox}
+\usepackage[skip=1ex]{caption}
+
+% basics
+\newcommand{\handlemath}[1]{\relax\ifmmode #1\else $#1$\fi}
+\newcommand{\figref}[1]{{Figure~\ref{#1}}}
+\newcommand{\secref}[1]{{\S\ref{#1}}}
+\newcommand{\eg}{e.g., }
+
+% Superscript command
+\newcommand{\tss}[1]{{\textsuperscript{#1}}}
+
+% comments, etc.
+\newcommand{\todo}[1]{}
+\newcommand{\cjr}[1]{}
+\newcommand{\ds}[1]{}
+\newcommand{\aditya}[1]{}
+\newcommand{\jane}[1]{}
+\newcommand{\rohit}[1]{}
+\renewcommand{\todo}[1]{{\color{blue}\textbf{TODO:} #1}}
+\renewcommand{\check}[1]{{\color{orange}\textbf{Check:} #1}}
+\renewcommand{\cjr}[1]{{\color{red}\textbf{[cjr]:} #1}}
+\renewcommand{\ds}[1]{{\color{teal}\textbf{[ds]:} #1}}
+\renewcommand{\aditya}[1]{{\color{pink}\textbf{[aditya]:} #1}}
+\renewcommand{\jane}[1]{{\color{olive}\textbf{[jane]:} #1}}
+\renewcommand{\rohit}[1]{{\color{yellow}\textbf{[rohit]:} #1}}
+
+
+%% A dense itemize environment
+\newenvironment{denseitemize}{
+\begin{itemize}[noitemsep, topsep=0pt, leftmargin=1.2em]
+}{\end{itemize}}
+
+ %% A dense enumerate environment
+\newenvironment{densenumerate}{
+\begin{enumerate}[noitemsep, topsep=0pt, leftmargin=1.2em]
+}{\end{enumerate}}
+
+% Reduce spacing after headings
+\titlespacing*\section{0pt}{0pt plus 2pt minus 2pt}{0pt plus 2pt minus 2pt}
+\titlespacing*\subsection{0pt}{0pt plus 2pt minus 2pt}{0pt plus 2pt minus 2pt}
+\titlespacing*\subsubsection{0pt}{0pt plus 2pt minus 2pt}{0pt plus 2pt minus 2pt}
+
+\makeatletter
+\renewcommand\AB@affilsepx{, \protect\Affilfont}
+\makeatother
+
+\title{How I {\it learned} to not worry about {\it learned} policies in my OS}
+
+% The \author macro works with any number of authors. There are two commands
+% used to separate the names and addresses of multiple authors: \And and \AND.
+%
+% Using \And between authors leaves it to LaTeX to determine where to break the
+% lines. Using \AND forces a line break at that point. So, if LaTeX puts 3 of 4
+% authors names on the first line, and the last on the second line, try using
+% \AND instead of \And before the third author name.
+
+
+\begin{document}
+
+
+\maketitle
+\input{texfiles/abstract}
+\input{texfiles/introduction}
+\input{texfiles/background}
+\input{texfiles/guardrails}
+\input{texfiles/discussion}
+\input{texfiles/summary}
+
+\bibliography{refs.bib}
+\bibliographystyle{plainnat}
+
+% \input{texfiles/appendix}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\end{document}

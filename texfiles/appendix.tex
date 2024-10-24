@@ -1,0 +1,57 @@
+\appendix
+
+\iffinal
+\section{Data Sources for OS Traces}\label{apdx:sources}
+Below we list the various data sources that can be used to train \abbr{}:
+\begin{denseitemize}
+    \item \textit{Action logs from OS components:}  Kernel logs such as {\tt dmesg} in Linux/MacOS and event logs in Windows, 
+    %when configured during boot, 
+    capture kernel debugging data, hardware events (e.g., network link status), and system events like interrupts, process restarts. These logs capture the actions taken by the OS components and the system state used by OS tasks (System state and Actions columns in Table~\ref{tab:os_components}).
+    % ~\cjr{Is it worth noting that dmesg is present in Linux and MacOS, but other OSes by necessity have similar tools (e.g. Windows has the Windows System Log.}
+    % We can also get similar statistics on system calls and kernel data structures using eBPF~\cite{ebpf}.
+    \item \textit{Resource metrics and hardware counters:} Hardware drivers record several quantities relating to the resource's state at a pre-configured frequency. These include CPU, memory, and disk bandwidth utilization, NIC queue length, and hardware counters. 
+    %Frequently collected metrics from the hardware drivers about the state of the resource (e.g. CPU utilization, memory usage, disk bandwidth usage, NIC queue lengths, CPU hardware counters, etc.)
+    \item \textit{Application workloads:} Workload traces from productions~\cite{alibaba-uservice-21, serverless-azure-20, borg-eurosys-15}, public infrastructures~\cite{taccstats} and synthetically generated ones offer detailed application-level information, such as application type, request arrival rates, statistics of resource usage during execution.
+    % \item \textit{OS environment metadata:} This includes information about the hardware specifications \aditya{is it static info, or counters and other dynamic info like that?}\ds{mostly static -- but we need to collect traces on several environments is the point} of the system resources (e.g. CPU, Cache, RAM, NIC, file system, etc.) and the deployed environment (i.e. cloud server, robot, or edge server). This data directly reflects the Environment State column for the different OS tasks in Table~\ref{tab:os_components}.
+\end{denseitemize}
+\fi
+
+
+
+\section{Decision Making Tasks in Operating Systems}\label{apdx:mdps}
+\input{tables/os_components}
+
+Table~\ref{tab:os_components} shows the various components in the OS and a \textit{representative subset} of the tasks for these components. It also shows the relevant system and environment states, action spaces, and the objectives of these tasks.
+Each task description is also accompanied by an acronym that we use in the paper to refer to the particular task, e.g. \textbf{SCH} for the CPU scheduling task.
+
+
+\iffinal
+\section{Pretraining Methodology for \abbr{}}\label{apdx:pretrain}
+We envision \abbr{} to be {\bf pre-trained} using self-supervised methods on a large corpus of OS traces. This pre-trained model would capture temporal relationships in the sequence of inputs it accepts and build an understanding of the system dynamics of the OS.
+Existing literature (particularly in natural language) has proposed several pre-training tasks that can be used to develop this basic understanding. Notable among these are the Next Token Prediction~\cite{gpt-18}, Masked Language Modeling, Next Sentence Prediction~\cite{bert-18}; each with their own pros and cons.
+While it seems intuitive to employ an auto-regressive model, pre-trained with next token prediction to build \abbr{}, the optimal pre-training task is an open and interesting question in itself.
+
+
+
+\section{Open Challenges for \abbr{}}\label{apdx:challenges}
+\subsection{Challenges in using \abbr{} as a Policy Agent}
+End-to-end application performance depends on collective decisions made by OS components.
+Using foundation models as policy agents brings two unique challenges:  \textit{composability} of actions from various policy agents and end-to-end \textit{explanability} of their decisions.
+The former arises because decisions of one policy can affect the future states of other agents (as with the \textbf{CACHE} and \textbf{SCH} example discussed in \secref{sec:background}).
+Independently fine-tuned components in the OS may result in suboptimal OS-wide decisions, that may affect both individual application and system-wide guarantees (e.g. fairness and starvation-freedom). 
+% On the other hand, system-wide guarantees on decision quality and explanations for individual decisions necessitate a holistic understanding of OS behavior.
+One possible approach here is to jointly fine-tune components (to ensure concerted decisions) as well as to develop techniques that provide component-wise guarantees (on performance, e.g., bounds on tail request completion times, or correctness, e.g., safety and liveness properties~\cite{whirl-sigcomm-21}), and \textit{formally guaranteed composability} of these actions to provide global invariants for the entire OS.
+
+Regarding the latter, ideally, we desire human users to understand the OS at some level to audit or debug it. However, learned decisions from a black-box model may easily obscure the understanding of overall behavior.
+We envision the use of approaches that describe what each learned policy did in a given execution (similar to LIME~\cite{lime-2016}), what could have happened had a learned policy made a different decision, and also produce human-comprehensible `summaries' in the form of rules~\cite{dillig-counterfactual-expl-icse-22,dillig-explaining-mispredictions-2021}, or programs~\cite{interpretable-icml-18-swarat} of what the module will do ahead of time.
+
+\subsection{Challenges in using \abbr{} as a Generative Model}
+As with any generative model, quantifying the quality of synthetic samples is a key challenge.
+At the very least, these traces should
+% closely match real trace distributions (e.g., request arrival and size patterns for a \textbf{CACHE} task trace must be similar to real-world traces) while maintaining
+maintain certain relationships between variables (e.g., total network transmissions should be less than network bandwidth).
+They must also capture desired properties that are difficult to obtain otherwise, such as `realism', i.e., a specific sequence of requests in a generated trace can actually arise in practice --- this is an avenue for future research.
+Further, the generated traces should also be diverse to be useful. For example, for a cache replacement algorithm, we would want traces with diverse and realistic combinations of small and large object arrivals to effectively stress-test the algorithm~\cite{darwin-sigcomm-23}. 
+% \dk{A sentence explaining the privacy challenge is gone. If it was intentional, I think we should remove the following sentences also.}\ds{I merged that in the following one - the following sentences capture the privacy challenge, no?}
+Another challenge is with leakage and memorization of sensitive data. As shown in previous works~\cite{diffusion-sec-23,codex-sec-23}, carefully designed prompts can extract memorized training data with sensitive information. Thus, integrating techniques such as filtering the memorized data~\cite{llm-sec-21} and ideas from say, differential privacy~\cite{dp-tcc-06}, into \abbr{} are necessary.
+\fi
