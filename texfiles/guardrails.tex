@@ -7,9 +7,38 @@
     \item At runtime, the guardrail is checked, and the action is taken if the trigger is activated.
 \end{itemize}
 
+\ds{How to formulate guardrails for learned predictions that are used in handcrafted heuristics? For example, LinnOS. Or for instance, when learning is used to forecast workloads -- which is a reasonable way of using the power of learning while making sure that the policies are still `safe'.}
+
 \subsection{Properties}
 
 \todo{Examples of three types of properties}
+
+\ds{Feedback from Eric: We could possibly write these policies in LTL and use that for implementing efficient triggers.}
+
+Meta-properties (for all subsystems): (1) Input state distribution should be similar to training input state distribution (data drift guardrail). (2) Robustness of the output over some small input perturbation (measurement noise). \jane{inference speed for blocking tasks}
+
+Simple policy-specific interface: what are the operators/input in the language.
+
+1. Define bad behaviors:
+
+\noindent \verb|if(COUNT(Kshould_migrate) >= 2 && TIME(Kshould_migrate)[2] - TIME(Kshould_migrate)[0] < alpha) bad()|
+
+\noindent \verb|if(num_mig >= 2 && mig_ts[2] - mig_ts[0] < alpha) bad()|
+
+\noindent \verb|if(wasted_migration > threshold) bad()|
+
+2. When to trigger: bad behavior counts > threshold
+
+CPU NUMA Load Balancing: (i) Wasteful migration is bad \rohit{If a task is migrated from node X to node Y, and the task is then migrated to node Z without having been scheduled for atleast $\alpha$ ms on Y, this is bad}, (ii) Load (CPU utilization) imbalance should not exceed some metric threshold $\lambda$.
+
+
+KML Readahead: (i) Prefetched pages ought to be accessed in some time window. \rohit{prefetched pages must be used before they get kicked out}, (ii) Prefetch size should be less than the allocated memory (or cgroup size, etc). \jane{better than minimum coverage metric, i.e. >0\%?}
+
+LinnOS~\cite{linnOS-osdi-20} (I/O latency prediction) guardrails: (1) select a small subset (0.1\%) of requests at random, and send to all disks for that request. For this subset, top1-selection better than random (or better than YY\%) (2) Accuracy of latency prediction should not be off by more than X\%.
+
+Congestion Control: (1) If qdel is low, inc cwnd. (2) If qdel is high, dec cwnd.
+
+CPU Overclocking: (1) A increase in the overclocking should lead to a proportional improvement in the process IPS.
 
 \subsection{Triggers}
 
