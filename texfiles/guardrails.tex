@@ -9,15 +9,19 @@
 
 \ds{How to formulate guardrails for learned predictions that are used in handcrafted heuristics? For example, LinnOS. Or for instance, when learning is used to forecast workloads -- which is a reasonable way of using the power of learning while making sure that the policies are still `safe'.}
 
+\discuss{Classification of current and prospective OS models into some pre-defined categories and then come up with properties and guardrails for each of those categories?}
+
+
 \subsection{Properties}
 
-\todo{Examples of three types of properties}
 
 \ds{Feedback from Eric: We could possibly write these policies in LTL and use that for implementing efficient triggers.}
 
 Meta-properties (for all subsystems): (1) Input state distribution should be similar to training input state distribution (data drift guardrail). (2) Robustness of the output over some small input perturbation (measurement noise). \jane{inference speed for blocking tasks}
 
 Simple policy-specific interface: what are the operators/input in the language.
+
+\ds{Properties are still low-level - need higher-level abstractions.}
 
 1. Define bad behaviors:
 

@@ -1,10 +1,58 @@
 \section{Introduction}\label{sec:introduction}
 
-\begin{itemize}
-    \item Why OSes will see more and more learned policies - learned policies do better than stock OS policies.
-    \item Reluctance of OS practitioners in using learned models - overheads, decision quality, etc. For decision quality, primarily because of the black box nature and the lack of guarantees. 
-    \item Need for guardrails to make learned policies more usable in OSes.
-    \item We propose the abstraction of guardrails, and discuss their applicability to three different OS components.
-    \item Easier to come up with properties, than coming up with actual algo: that's why human created heuristics will fail, but human created specs shall prevail. 
-\end{itemize}
+The Operating System (OS) is responsible for managing a wide variety of resources for a diverse range of applications, all running together, with each application having unique and dynamic demands.
+To add further to the complexity of OS tasks, the same OS can be deployed in various scenarios -- from datacenter servers to edge devices to end-user equipment.
+As such, various OS policies (and associated interfaces) have been designed and refined over the years to provide good performance for a general set of applications.
+
+However, simply refining these heuristics is not enough for modern applications with tight and strict performance needs. 
+Decades of refinement of memory management policies still leaves us with an Operating System that may spend up to 500 ms allocating a huge page~\cite{cbmm}, that may lead to network under-utilization~\cite{} \ds{cite CC papers}, and may not be sub-optimal in scheduling processes \ds{search for scheduling papers from sigmetrics}. 
+
+Learning (in particular, deep learning) has proven to be a useful \ds{better word?} tool in dealing with dynamic environments and out-performing human-designed heuristics in a number of domains such as games, vision, etc.
+Operating systems policies haven't remained untouched either -- learning has demonstrated significant benefits when used for OS policies such as I/O latency prediction~\cite{linnOS-osdi-20}, file readahead~\cite{kml-hotstorage-21}, congestion control~\cite{orca-sigcomm-20}, among others.
+This has been largely attributed to the ability of deep learning models to use a wide variety of features, infer future behaviors accurately and generalize across examples.
+
+However, there is a reluctance of OS practitioners in using these learned models, majority of which stems from the uncertainty in the decision quality of learned policies.
+Policies employing deep neural networks suffer from a lack of worst-case analysis due to the black-box nature of the neural networks. \ds{Elaborate more.}
+We believe this is also a major roadblock in ushering novel learned policies for the OS at the same pace as has been observed in other domains, such as protein discovery, biomedicine, etc. \discuss{What else to say to motivate guardrails?}
+
+Hesitation reasons:
+1. Black box nature of guardrails leading to us not trusting the model, because of: i) security, ii) reproducibility. \textit{Guardrails help in regulating and understanding these black box models.}
+
+2. Misbehaviors where the learned policies may take unsafe decisions leading to drastically bad system states. regression because of updates.
+
+3. Performance overheads of using models. \textit{Bounding performance impact by monitoring overheads and impact}
+
+4. Training Data and Mechanism.
+
+In this paper, we attempt to develop a framework to provide guarantees on how bad a learned OS policy can be and provide means to detect and regulate when the policy leads to arbitrarily bad system behavior.
+We call this framework \textbf{Guardrails for the OS}.
+We describe the key requirements and design principles for building these guardrails, and then devise a taxonomy for building standardized guardrails.
+
+\ds{Refine:}
+Our framework utilizes a simple interface for specifying desired high-level properties that OS practitioners want their policies to satisfy.
+This interface uses a declarative query language to allow reasoning over events and collected data points.
+
+Why is OS the right space to tackle these questions?
+These questions arise for all systems, but in the OS it is:
+- More critical? 
+- We know some desirable properties in the context of Operating Systems.
+- Constraints that the OS introduces: Strict Decision Deadlines
+
+\discuss{Contributions:
+i. Requirements/Design Principles of Guardrails,
+ii. Taxonomy (+ Classification of prospecitve learned models) and Properties,
+iii. Interface + Declarative Language}
+
+\todo{requirements is a sub-part of the interface.}
+
+
+% \begin{itemize}
+%     \item Why OSes will see more and more learned policies - learned policies do better than stock OS policies.
+%     \item Reluctance of OS practitioners in using learned models - overheads, decision quality, etc. For decision quality, primarily because of the black box nature and the lack of guarantees. 
+%     \item Need for guardrails to make learned policies more usable in OSes.
+%     \item We propose the abstraction of guardrails, and discuss their applicability to three different OS components.
+%     \item Easier to come up with properties, than coming up with actual algo: that's why human created heuristics will fail, but human created specs shall prevail. 
+% \end{itemize}
+
+% \ds{Contributions: Requirements, Design principles, and a taxonomy for building standardized guardrails.}
 
