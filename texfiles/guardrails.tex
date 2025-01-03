@@ -1,53 +1,141 @@
 \section{Guardrails}\label{sec:guardrails}
+ 
+To address these issues, we propose \textbf{Guardrails}, a systematic, uniform approach to specify and enforce constraints on learned models in OS. 
+Guardrails serve as an always-on safety net, preventing the learned policy from making unbounded errors and giving OS developers confidence in deploying such policies in production environments.
 
-\begin{itemize}
-    \item Guardrail = (Property, Trigger, and Action)
-    \item An OS policy developer can specify the guardrail that must accompany a learned policy.
-    \item Our tool can then generate the code that implements the guardrail.
-    \item At runtime, the guardrail is checked, and the action is taken if the trigger is activated.
-\end{itemize}
+\subsection{Overview}
+At its core, a guardrail background service runs in a ``learned-enabled'' OS. OS developers specify guardrail rules for each learned component being deployed. 
+%Cut by Mike - not really relevant here - this is an implementation detail
+%These rules are loaded during boot time \jane{service reload config}. 
+Each guardrail rule has two primary components:
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Properties (Section \ref{sec:property}):} Declarative expressions of desired behaviors and constraints. Properties capture the guarantees OS developers require, such as performance bounds, resource constraints, or safety invariants.
+    \item \textbf{Actions (Section \ref{sec:action}):} Corrective measures automatically invoked upon detecting property violation.
+\end{enumerate}
+At runtime, the guardrail service monitors relevant metrics specified in the guardrail rules (e.g., inference latency, CPU usage, error rates), evaluates them against the specified properties, and triggers the associated actions if needed. 
+Through these well-defined rules, guardrails limit risk by detecting policy misbehavior in real time and responding automatically.
+\mike{This seems to pedestrian - kind of vanilla and boring. How can we make it sound more novel and exciting and not just a new kind of assertion? Can we say something about what is missing from current heuristic policies is any kind of behavior introspection that can lead to adaptation or change?}
 
-\ds{How to formulate guardrails for learned predictions that are used in handcrafted heuristics? For example, LinnOS. Or for instance, when learning is used to forecast workloads -- which is a reasonable way of using the power of learning while making sure that the policies are still `safe'.}
+We next describe both guardrail rule components in detail and illustrate them with practical examples of OS policies and associated learned models.
 
-\discuss{Classification of current and prospective OS models into some pre-defined categories and then come up with properties and guardrails for each of those categories?}
+% In this section, we go over the two key components of guardrails and give examples of generally applicable guardrail examples. Then, we introduce a simple interface for programmers to customize desired guardrail specs. 
 
+% \begin{itemize}
+%     \item Guardrail = (Property, Trigger, and Action)
+%     \item An OS policy developer can specify the guardrail that must accompany a learned policy.
+%     \item Our tool can then generate the code that implements the guardrail.
+%     \item At runtime, the guardrail is checked, and the action is taken if the trigger is activated.
+% \end{itemize}
+
+% \ds{How to formulate guardrails for learned predictions that are used in handcrafted heuristics? For example, LinnOS. Or for instance, when learning is used to forecast workloads -- which is a reasonable way of using the power of learning while making sure that the policies are still `safe'.}
+
+% \discuss{Classification of current and prospective OS models into some pre-defined categories and then come up with properties and guardrails for each of those categories?}
 
 \subsection{Properties}
+\label{sec:property}
+
+Properties describe the criteria under which a learned policy is considered ``safe enough’’ for OS. 
+These constraints can be expressed over (i) the \textit{input state} of a model (e.g., the distribution of requests), (ii) the \textit{model’s output} (e.g., predicted values or discrete decisions), or (iii) the \textit{resulting system behavior} (e.g., resource usage, latency, throughput). \mike{Make sure we have examples for all three catgories, and label the examples with their category}
+
+With consultation from domain experts, we summarize some common system properties that can be generally desired for all learned OS policies.
+
+\paragraph{In-Distribution Data.}
+A model that was trained on a certain workload distribution may fail on unseen or drastically different inputs. \jane{cite} It is hard to collect a diverse enough training dataset. Hence, one primary property for learned models is that \textit{runtime inputs remain in-distribution}. 
+If the guardrail service detects a dramatic shift, it flags a violation. 
+For example, \textit{LinnOS}~\cite{linnOS-osdi-20} uses supervised learning to predict SSD I/O times; if the observed I/O metadata diverges beyond a specified threshold from training conditions, the guardrail can trigger a violation.
+This prevents large performance regressions when the workload changes abruptly. \mike{What about also checking feasible values on output here as well, e.g. not allowing read-ahead of 2gb? Or where does that go?}
+
+\paragraph{Robustness to Small Perturbations.}
+OS often deals with noisy signals and measurement errors (e.g., hardware counters).\jane{cite} 
+A robust model should not drastically alter its decisions with minor input perturbations. 
+Hence, a guardrail can check whether similar inputs yield approximately similar outputs and similar system behavior over a time window. 
+For LinnOS, two I/O requests of similar block offset, size and read/write type should lead to latency predictions in a similar range.
+For KML I/O readahead prediction, similar page access patterns should yield similar readahead value decisions as well as similar I/O throughput.
+
+\paragraph{Lightweight Decision-Making.}
+High inference latency for learned models in the OS layer may take back any performance benefits of learned policies. 
+To address this, a guardrail can track and constrain the system's decision-making time. It could either be the learned model's inference time (e.g., 10~$\mu$s for latency prediction in LinnOS), or a learning-aided controller's decision time (e.g. \jane{??} for cwnd change in Orca~\cite{orca-sigcomm-20}).
+This ensures that machine learning overhead does not dominate or violate real-time constraints in critical OS paths.
+
+\mike{Need example of performance guardrail - e.g. latency for scheduling woken thread, latency of I/O request, etc.}
+
+In addition to these, table~\ref{tab:property} summarizes key properties that OS developers often find useful for different types of learned models. 
+% Many more domain-specific properties can be easily added. 
+
+\begin{table*}[]
+    \centering
+    \begin{tabular}{c|c|c}
+        Model Type          & Property  & Example Work   \\
+        \hline
+        Decision-based      & Feasibility: outputs remain within permissible action bounds   & KML I/O Readahead             \\
+        Prediction-based    & Accuracy: prediction error remains acceptable                   & LinnOS I/O Prediction         \\
+    \end{tabular}
+    \caption{Caption}
+    \label{tab:property}
+\end{table*}
+
+% \ds{Feedback from Eric: We could possibly write these policies in LTL and use that for implementing efficient triggers.}
+
+% Meta-properties (for all subsystems): (1) Input state distribution should be similar to training input state distribution (data drift guardrail). (2) Robustness of the output over some small input perturbation (measurement noise). \jane{inference speed for blocking tasks}
+
+% Simple policy-specific interface: what are the operators/input in the language.
+
+% \ds{Properties are still low-level - need higher-level abstractions.}
+
+% 1. Define bad behaviors:
+
+% \noindent \verb|if(COUNT(Kshould_migrate) >= 2 && TIME(Kshould_migrate)[2] - TIME(Kshould_migrate)[0] < alpha) bad()|
+
+% \noindent \verb|if(num_mig >= 2 && mig_ts[2] - mig_ts[0] < alpha) bad()|
+
+% \noindent \verb|if(wasted_migration > threshold) bad()|
+
+% 2. When to trigger: bad behavior counts > threshold
+
+% CPU NUMA Load Balancing: (i) Wasteful migration is bad \rohit{If a task is migrated from node X to node Y, and the task is then migrated to node Z without having been scheduled for atleast $\alpha$ ms on Y, this is bad}, (ii) Load (CPU utilization) imbalance should not exceed some metric threshold $\lambda$.
 
 
-\ds{Feedback from Eric: We could possibly write these policies in LTL and use that for implementing efficient triggers.}
+% KML Readahead: (i) Prefetched pages ought to be accessed in some time window. \rohit{prefetched pages must be used before they get kicked out}, (ii) Prefetch size should be less than the allocated memory (or cgroup size, etc). \jane{better than minimum coverage metric, i.e. >0\%?}
 
-Meta-properties (for all subsystems): (1) Input state distribution should be similar to training input state distribution (data drift guardrail). (2) Robustness of the output over some small input perturbation (measurement noise). \jane{inference speed for blocking tasks}
+% LinnOS~\cite{linnOS-osdi-20} (I/O latency prediction) guardrails: (1) select a small subset (0.1\%) of requests at random, and send to all disks for that request. For this subset, top1-selection better than random (or better than YY\%) (2) Accuracy of latency prediction should not be off by more than X\%.
 
-Simple policy-specific interface: what are the operators/input in the language.
+% Congestion Control: (1) If qdel is low, inc cwnd. (2) If qdel is high, dec cwnd.
 
-\ds{Properties are still low-level - need higher-level abstractions.}
+% CPU Overclocking: (1) A increase in the overclocking should lead to a proportional improvement in the process IPS.
 
-1. Define bad behaviors:
+% \subsection{Triggers}
 
-\noindent \verb|if(COUNT(Kshould_migrate) >= 2 && TIME(Kshould_migrate)[2] - TIME(Kshould_migrate)[0] < alpha) bad()|
-
-\noindent \verb|if(num_mig >= 2 && mig_ts[2] - mig_ts[0] < alpha) bad()|
-
-\noindent \verb|if(wasted_migration > threshold) bad()|
-
-2. When to trigger: bad behavior counts > threshold
-
-CPU NUMA Load Balancing: (i) Wasteful migration is bad \rohit{If a task is migrated from node X to node Y, and the task is then migrated to node Z without having been scheduled for atleast $\alpha$ ms on Y, this is bad}, (ii) Load (CPU utilization) imbalance should not exceed some metric threshold $\lambda$.
-
-
-KML Readahead: (i) Prefetched pages ought to be accessed in some time window. \rohit{prefetched pages must be used before they get kicked out}, (ii) Prefetch size should be less than the allocated memory (or cgroup size, etc). \jane{better than minimum coverage metric, i.e. >0\%?}
-
-LinnOS~\cite{linnOS-osdi-20} (I/O latency prediction) guardrails: (1) select a small subset (0.1\%) of requests at random, and send to all disks for that request. For this subset, top1-selection better than random (or better than YY\%) (2) Accuracy of latency prediction should not be off by more than X\%.
-
-Congestion Control: (1) If qdel is low, inc cwnd. (2) If qdel is high, dec cwnd.
-
-CPU Overclocking: (1) A increase in the overclocking should lead to a proportional improvement in the process IPS.
-
-\subsection{Triggers}
-
-\todo{Examples of three types of triggers}
+% \todo{Examples of three types of triggers}
 
 \subsection{Actions}
+\label{sec:action}
 
-\todo{Examples of three types of actions}
+When a guardrail property is violated, the OS must have a well-defined response. 
+We categorize these \textbf{actions} into three classes:
+
+\begin{enumerate}[leftmargin=*]
+
+    \item \textbf{Verbose Logging.}
+    The cause of property violations may be hard to track, especially given the black box nature of machine learning models. The guardrail may activate a verbose logging mode. In this mode, the system captures richer diagnostic traces, such as extended features, model intermediate outputs and related kernel events - which are too expensive to be always-on when error-free. This on-demand extra context can help pinpoint the root cause of misbehavior by revealing both system and model logic. When system returns to stable operation, verbose logging can be automatically reverted back to regular logging.
+
+    \item \textbf{Fallback to a Baseline Policy.}
+    For system components with a classical heuristic that can meet the guardrail properties, the OS can always revert to this preexisting heuristic when the learned model violates any of the properties. 
+    This ensures system's smooth operations when learned policies fall short. 
+    A typical example is when Orca fails under extreme or unexpected workloads~\cite{yang2024c3}; the guardrail can revert to the kernel’s default congestion control algorithm.
+
+    \item \textbf{Model Retraining.}
+    In some scenarios (e.g., when in-distribution data is violated), the learned policy model needs to trigger retraining to update with new observations. 
+    This action protects the OS from long-term harm caused by an unfit model.
+
+    % \item \textbf{System Environment Interference.} 
+    \jane{DISCUSS: does ``System Environment Interference'' work for the above properties?}
+\end{enumerate}
+
+\mike{Can we categorize these somehow as (a) reporting, (b) change the environment, (c) change the model, (d) change the policy, (e) change the workload? This has a nice parallelism and supports things like the OOM killer (change the workload), defragmentation (change the environment) retraining (change the model)}
+
+These three categories provide a straightforward but powerful toolbox for `mitigating risks posed by learned policies. 
+By specifying the action alongside each property violation for learned components, developers can calibrate how aggressively the guardrail intervenes, balancing resilience against overall performance.
+
+
+% \todo{Examples of three types of actions}
+\jane{new section for lightweight interface?}

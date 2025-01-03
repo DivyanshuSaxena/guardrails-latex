@@ -5,18 +5,19 @@ To add further to the complexity of OS tasks, the same OS can be deployed in var
 As such, various OS policies (and associated interfaces) have been designed and refined over the years to provide good performance for a general set of applications.
 
 However, simply refining these heuristics is not enough for modern applications with tight and strict performance needs. 
-Decades of refinement of memory management policies still leaves us with an Operating System that may spend up to 500 ms allocating a huge page~\cite{cbmm}, that may lead to network under-utilization~\cite{} \ds{cite CC papers}, and may not be sub-optimal in scheduling processes \ds{search for scheduling papers from sigmetrics}. 
+Decades of refinement of memory management policies still leaves us with an Operating System that may spend up to 500 ms allocating a huge page~\cite{cbmm}, that may lead to network under-utilization~\cite{} \ds{cite CC papers}, and may not be sub-optimal in scheduling processes \ds{search for scheduling papers from sigmetrics}. \mike{Try to have a specific  example for scheduling}
 
-Learning (in particular, deep learning) has proven to be a useful \ds{better word?} tool in dealing with dynamic environments and out-performing human-designed heuristics in a number of domains such as games, vision, etc.
+Learning (in particular, deep learning) has proven to be a useful \ds{better word?}\mike{promising or powerful} tool in dealing with dynamic environments and out-performing human-designed heuristics in a number of domains such as games, vision, etc.
 Operating systems policies haven't remained untouched either -- learning has demonstrated significant benefits when used for OS policies such as I/O latency prediction~\cite{linnOS-osdi-20}, file readahead~\cite{kml-hotstorage-21}, congestion control~\cite{orca-sigcomm-20}, among others.
 This has been largely attributed to the ability of deep learning models to use a wide variety of features, infer future behaviors accurately and generalize across examples.
 
 However, there is a reluctance of OS practitioners in using these learned models, majority of which stems from the uncertainty in the decision quality of learned policies.
-Policies employing deep neural networks suffer from a lack of worst-case analysis due to the black-box nature of the neural networks. \ds{Elaborate more.}
+Policies employing deep neural networks suffer from a lack of worst-case analysis due to the black-box nature of the neural networks. \ds{Elaborate more.}\mike{I wouldn't lead with worst case behavior, as I don't think that is the issue. I think it is more unpredictable or erratic behavior}
 We believe this is also a major roadblock in ushering novel learned policies for the OS at the same pace as has been observed in other domains, such as protein discovery, biomedicine, etc. \discuss{What else to say to motivate guardrails?}
 
 Hesitation reasons:
-1. Black box nature of guardrails leading to us not trusting the model, because of: i) security, ii) reproducibility. \textit{Guardrails help in regulating and understanding these black box models.}
+1. Black box nature of guardrails leading to us not trusting the model, because of: i) security, ii) reproducibility. \textit{Guardrails help in regulating and understanding these black box models.} 
+\yeonju{explainability can be another issue under the blockbox category but guardrails may not resolve the problem -- then better  to not mention?}
 
 2. Misbehaviors where the learned policies may take unsafe decisions leading to drastically bad system states. regression because of updates.
 
@@ -27,6 +28,7 @@ Hesitation reasons:
 In this paper, we attempt to develop a framework to provide guarantees on how bad a learned OS policy can be and provide means to detect and regulate when the policy leads to arbitrarily bad system behavior.
 We call this framework \textbf{Guardrails for the OS}.
 We describe the key requirements and design principles for building these guardrails, and then devise a taxonomy for building standardized guardrails.
+\mike{Make the analogy clear: just as guardrails allow drivers the flexibility to steer within a roadway, they prevent catastrophic behavior by steering vehicle back on path.}
 
 \ds{Refine:}
 Our framework utilizes a simple interface for specifying desired high-level properties that OS practitioners want their policies to satisfy.
