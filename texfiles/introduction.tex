@@ -1,7 +1,5 @@
 \section{Introduction}\label{sec:introduction}
 
-\ds{Intro is a bit long -- need to tighten.}
-
 The Operating System (OS) lies at the core of modern computing.
 The OS manages hardware and software resources through policies that govern resource allocation and control.
 Conventionally, OS policies have been designed for generality -- resulting in largely static OS policies with only coarse knobs (e.g., turning hugepages on/off, or choosing nice values for tasks) to tune performance for specific applications manually.
@@ -9,9 +7,6 @@ Such static policies are increasingly ill-suited to the modern computing landsca
 For instance, the CFS scheduler can result in high performance variability for certain application classes that can generate imbalance in requests to threads~\cite{syrup-sosp21,shinjuku-nsdi19}, result in non-work-conserving behavior for specific hardware~\cite{wasted-cores}, or degrade performance when large number of CPUs share the same domain~\cite{meta-lavd}. \aditya{the example later switches to memory/cbmm. can we replace this with a memory example?}
 
 As a consequence, OS policy design is becoming increasingly workload-dependent.
-Recent efforts to customize various OS subsystems via eBPF~\cite{kflex-sosp24,cache-ext-sosp25,sched-ext,meta-lavd} or support bespoke OS policies in userspace~\cite{ghost-sosp21} reflect this need for workload-specific behavior.
-Similarly, learning-driven OS policies~\cite{heimdall-eurosys25,orca-sigcomm20,kml-tos23,kleio-hpdc19} also aim to produce decisions optimized for the current workload by leveraging large amounts of training data.
-This trend is likely to accelerate further with advances in ML-based tuning of OS policy knobs~\cite{tuning-pacmi25,agentic-tuning-ml4sys25}, and with the growing use of AI agents by kernel contributors to generate new policies~\cite{policysmith-hotnets25,glia-arxiv25,barbarians25,vulcan-arxiv25,agentic-os-ml4sys25}.
 
 However, these workload- and hardware-specific policies are inherently brittle.
 To achieve high performance in a particular setting, policy designers must make assumptions about workload characteristics and execution environments, but these assumptions can easily fail at deployment time.
@@ -28,8 +23,6 @@ As a result, policy development becomes a trial-and-error loop of making assumpt
     \caption{A design philosophy based in runtime performance introspection: the OS continually evaluates desired properties to check when and where a policy makes sub-optimal decisions.}
     \label{fig:intro-example}
 \end{figure}
-
-\ds{Possible high-level bit: why does this only apply to the OS? I guess it applies generally but we are instantiating only in the OS because it is a rich space of policies, and has a bunch of issues today?}
 
 We propose an alternative design philosophy of deploying and refining OS policies, based on {\it \textbf{performance introspection}} -- the ability to check {\em during execution} whether OS policies are delivering the desired performance. \aditya{we want to clarify how this is different from/complementary with runtime verification}
 We realize this philosophy through {\it \textbf{OS guardrails}}, an abstraction that {\em requires} policy developers (or OS operators) to specify: (i) the desired performance property as an expression over execution-time statistics, and (ii) a corrective action to invoke when that property is violated.
@@ -68,3 +61,9 @@ Finally, to meet the diversity of applications and their demands, guardrails mus
 \sujay{I think there is an additional challenge which we might not tackle directly. There could be multiple specialized policies in the system all affecting the overall application performance. Therefore, it is not sufficient to just monitor app performance but we need to identify which subsystem/policy is behaving poorly. Essentially, we need fine-grained guardrails, not just coarse-level. I think this should come earlier in the introduction?}\ds{I have a para saying guardrails can be sufficiently local or global -- does that address?}
 
 \sujay{We should have a paragraph about the contributions. We are proposing a generic framework that will make developers life easy.}\ds{Updated in the fourth para. PTAL.}
+
+\ds{Put somewhere:
+Recent efforts to customize various OS subsystems via eBPF~\cite{kflex-sosp24,cache-ext-sosp25,sched-ext,meta-lavd} or support bespoke OS policies in userspace~\cite{ghost-sosp21} reflect this need for workload-specific behavior.
+Similarly, learning-driven OS policies~\cite{heimdall-eurosys25,orca-sigcomm20,kml-tos23,kleio-hpdc19} also aim to produce decisions optimized for the current workload by leveraging large amounts of training data.
+This trend is likely to accelerate further with advances in ML-based tuning of OS policy knobs~\cite{tuning-pacmi25,agentic-tuning-ml4sys25}, and with the growing use of AI agents by kernel contributors to generate new policies~\cite{policysmith-hotnets25,glia-arxiv25,barbarians25,vulcan-arxiv25,agentic-os-ml4sys25}.
+}

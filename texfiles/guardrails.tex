@@ -1,12 +1,10 @@
 \section{Performance Introspection}\label{sec:overview}
 
-\ds{Some parts of this section might need to be lifted into the Intro.}
-Specialized OS policies can provide performance gains for specific contexts but pose the risk of silent performance degradations under contexts that deviate even slightly.
-% The core challenge in enabling performance reliability for specialized OS policies today is the lack of performance signals in the OS.
-Today, the only practical way for operators to build confidence in specialized OS policies \aditya{this is imprecise. what does build confidence mean? be clear about what operators are trying to do with specialized policies and what blind spots/issues they face when using them.} is through extensive offline evaluation across many workloads, followed by manual inspection of end-to-end performance metrics.
-This process is expensive, incomplete, and ultimately unsatisfactory: no finite offline evaluation can anticipate the diversity of executions encountered in deployment.
-
-We argue that ensuring performance reliability for specialized OS policies requires a different capability altogether: rather than relying solely on offline testing and analysis, the OS should be able to introspect whether its policies are behaving well {\it at run-time}, using signals available during execution, and intervene when they are not. We call this capability {\it \textbf{performance introspection}}.
+As discussed above, performance can degrade when the assumptions underlying a policy’s design no longer hold.
+Today, the general approach operators use to evaluate whether OS policies suffer performance degradation, and to what extent, is through extensive offline evaluation across a wide range of workloads, followed by manual inspection of end-to-end performance metrics.
+This process is tedious, incomplete, and ultimately unsatisfactory: no finite offline evaluation can anticipate the diversity of executions encountered in deployment.
+We argue that ensuring satisfaction of performance properties requires a different capability altogether: rather than relying solely on offline testing and analysis, the OS should be able to introspect whether its policies are behaving well {\it at run-time}, using signals available during execution, and intervene when they are not.
+We call this capability {\it \textbf{performance introspection}}.
 In this paper, we propose a framework that brings such run-time performance introspection capabilities to the OS.
 The key building blocks enabling this framework are {\it \textbf{OS Guardrails}}.
 
@@ -14,18 +12,16 @@ The key building blocks enabling this framework are {\it \textbf{OS Guardrails}}
 isn't any policy "specialized" by definition or design?
 also, note that beyond 3.0 there is no mention of specialization, so why bring it up in the first place
 just say that policies are brittle from a perf perspective because designers are forced to make assumptions about workloads, enviornments etc that easily break at deployment time or in production. thus we need a principled way of knowing when that's happening and taking appropriate actions.}
+\ds{Updated. PTAL.}
 
-% In the rest of this section, we first describe the workflow for performance introspection in our framework, explaining the guardrail primitive (\Cref{subsec:framework}), and then provide a formal basis for how run-time guardrails can provide performance reliability (\Cref{subsec:formal-basis}).
-
-% A very successful technique has been to use formal verifiers before being deployed~\cite{certikos-osdi16}, or offline testing approaches can provide coverage over contexts of interest for the given policy\ds{add testing based cites}.
-% One straightforward way to enable runtime signals about OS performance would be to have applications communicate explicit information about their achieved performance. However, besides breaking the current application-OS interface, this approach has a major flaw: simply providing end-to-end application performance indicators leaves no way for the OS to figure out which policy to improve. 
-% Thus, such signals neither use readily available statistics nor are they actionable.
 
 \subsection{OS Guardrails}\label{subsec:guardrails-desc}
 
-An OS Guardrail (or guardrail, for simplicity) is a construct that evaluates whether the execution of an OS policy meets the requirement of reliable performance.
+An OS Guardrail (or guardrail, for simplicity) is a construct that evaluates whether the execution of an OS policy meets some target performance requirement.
 A guardrail captures two things: (i) a performance property that should hold for a policy or subsystem, and (ii) a corrective action to take when that property is violated.
 We provide an intuitive explanation here, and give a detailed formal definition in \Cref{sec:gdl}.
+
+\ds{Add a flow scheduling example here.}
 
 We use the term \emph{performance property} to denote a measurable \eric{safety?}predicate over policy execution in the OS.
 Depending on the policy, this predicate may be expressed over the policy’s inputs, its outputs, or the resulting system state.
