@@ -1,0 +1,146 @@
+\section{\lang: Guardrail Description Language}\label{sec:gdl}
+
+We present the \emph{Guardrails Description Language} (GDL), a declarative language for specifying performance guardrails over kernel behavior.
+\Cref{subsec:guardrails-desc} provided an informal description of what a guardrail consists of. We make the definition concrete here -- a guardrail specifies: (i) \emph{when} it is evaluated, (ii) \emph{what part of the execution} it inspects, (iii) \emph{what condition} must hold on the portion of execution it inspects, and (iv) \emph{what corrective action} is applied when that condition fails.
+In this section, we first formally define this construct and its semantics (\Cref{subsec:formal-guardrails}), then describe the syntax for \lang policies (\Cref{subsec:gdl-syntax}). Finally, we show how the \lang syntax is expressive enough to specify guardrails that lead to performance reliability (\Cref{subsec:formal-basis}). \ds{Need to revisit the last statement.} 
+
+\subsection{Formal Definition of Guardrails}
+\label{subsec:formal-guardrails}
+
+\paragraph{Notations.}
+A guardrail applies to the execution of the OS under a given policy.
+Formally, we say that a guardrail $G$ is applicable when the policy $\pi$ executes within a system $S$ (where the system could be the OS as a whole, or a specific subsystem that $\pi$ is a part of).
+$\pi$ is then a function in $\states\rightarrow\decisions$, where $\states$ denotes the set of all possible states of the system $S$, and $\decisions$ denotes the range of policy outputs.
+Let $\exec{S}{\pi}$ denote the set of possible executions of $\pi$ in system $S$.
+Each execution $\rho \in \exec{S}{\pi}$ is a sequence of system states, where transitions happen because of either decisions from the policy $\pi$ or {\it events} external to the policy. Thus, $\rho$ can be formally expressed as 
+\(
+\rho = x_0 \xrightarrow{d_1} x_1 \xrightarrow{d_2} x_2 \xrightarrow{e_1} x_3 \xrightarrow{d_3} \cdots
+\)
+Note that in the above definition of an execution, policy decisions and system events may occur in an interleaved manner. Moreover, any change in system state, whether driven by workload changes or by decisions made by other policies, is modeled as an event.
+
+\paragraph{Definition.}
+Using the above notations, we can now define a guardrail as the tuple
+\( G = (\trigger{G}, \window{G}, \condition{G}, \action{G}) \)
+with the following components:
+
+\begin{denseitemize}
+
+\item {\it \textbf{Trigger function, $\trigger{G}$.}} The trigger determines at which positions of an execution the guardrail is evaluated. 
+Formally, $\trigger{G}$ is a function
+\( \trigger{G}: \exec{S}{\pi} \rightarrow \{0, 1\}^{\mathbb{N}} \),
+where the function may be true at any `position' of the execution trace -- either at a new policy decision or an event.
+Triggers allow conditions to be specified over what execution sequence must have happened in order to reach a particular trigger, or what execution sequence must follow after the trigger.
+
+\item {\it \textbf{Window selector, $\window{G}$.}} For practical guardrails, evaluating the entire event sequence is computationally expensive, and it usually suffices to evaluate a finite portion of the execution, either before or after the trigger position.
+% When a guardrail is triggered at position $j$, it may only need to examine a finite portion of the execution until $j$.
+We represent this as a function
+\( \window{G}: \exec{S}{\pi} \times \mathbb{N} \rightarrow \execwindow{S}{\pi} \),
+where $\execwindow{S}{\pi}$ is the set of finite subsets of all execution sequences in $\exec{S}{\pi}$.  
+Intuitively, for a given execution $\rho \in \exec{S}{\pi}$, $\window{G}(\rho, j)$ denotes the finite event sequence that must be used to evaluate $G$ at position $j$. 
+
+\item {\it \textbf{Performance condition, $\condition{G}$.}} 
+The condition checked by the guardrail is a boolean predicate over the execution sequence chosen for evaluation.
+% \ds{This condition may also involve arithmetic operations over the sequence of events -- does a boolean predicate cover all such expressions too?}
+Formally,
+\( \condition{G} : \execwindow{S}{\pi} \rightarrow \{\mathrm{true},\mathrm{false}\} \).
+Intuitively, $\phi_G(o)=\mathrm{true}$ means that the system states and decisions in the finite sequence $\execwindow{S}{\pi}$ meet the performance condition.
+
+\item {\it \textbf{Corrective action, $\action{G}$.}}
+If the performance condition $\condition{G}$ evaluates to false, the guardrail specifies a corrective action.
+Formally,
+\( \action{G} \in \actions \),
+where $\actions$ is a pre-defined set of actions that guardrails are allowed to take.
+
+\end{denseitemize}
+
+\paragraph{Guardrail Semantics.}
+Let $G$ be a guardrail that is monitoring a particular execution $\rho \in \exec{S}{\pi}$ of policy $\pi$ in system $S$, and let $j \in \tau_G(\rho)$ be a trigger position.
+We write \( \rho, j \models G \) to mean that guardrail $G$ is satisfied at trigger point $j$ of execution $\rho$, and \( \rho, j \not\models G \) to mean that guardrail $G$ is violated at trigger point $j$, and takes the specified corrective action.
+Let $G = (\trigger{G}, \window{G}, \condition{G}, \action{G}) $, then we can express this evaluation formally as $\rho, j \models G \iff \condition{G}(\window{G}(\rho, j)) = \mathrm{true}$, and $\rho, j \not\models G \iff \condition{G}(\window{G}(\rho, j)) = \mathrm{false}$. In the latter case, action $\action{G}$ is taken.
+
+
+\subsection{\lang Primitives, Grammar, and Syntax}\label{subsec:gdl-syntax}
+
+\input{texfiles/grammar}
+
+\Cref{subsec:formal-guardrails} provides a semantic definition for guardrails, but designing an interface to allow operators to express them is non-trivial: guardrails for different policies will refer to different trigger points, use different kernel resources and notions of acceptable performance in their performance conditions, and require different types of actions to address performance violations.
+Therefore, we propose \lang, a domain-specific language that provides a small set of primitives sufficient to express runtime performance guardrails over kernel behavior.
+Concretely, a guardrail $G=(\trigger{G},\window{G},\condition{G},\action{G})$ (defined in \Cref{subsec:formal-guardrails}) is encoded in \lang as the tuple $(P, \action{G})$ where $P$ encodes how and what condition to check in the following syntax: $P = [\trigger{G}, \window{G}](\condition{G})$.
+\Cref{fig:gdl-grammar} shows the grammar of \lang.
+Below, we describe the key primitives and their justification.
+
+\paragraph{Inspection objects in the kernel.}
+The performance condition, $\condition{G}$ in \Cref{subsec:formal-guardrails}, operates over a finite sequence of system states, decisions, and events.
+\lang exposes this behavior through a small set of typed inspection domains ($Domain$).
+These include kernel objects (denoted \textsf{KObject} in \Cref{fig:gdl-grammar}), such as pages or processes; sets of kernel objects ($Set[\textsf{KObject}]$ in \Cref{fig:gdl-grammar}), which allow a guardrail to reason about collections of objects as first-class entities, e.g., whether a property holds for all memory regions of 256 contiguous pages; and instrumented kernel functions (\textsf{KFunc} in \Cref{fig:gdl-grammar}), which represent decision points or result in state transformations.
+The choice of these primitives is deliberate: guardrails targeted by \lang ultimately reason about kernel objects, their collections, and the function invocations that manipulate them. By centering the language around these domains, \lang remains narrow while still covering a broad space of runtime performance conditions.
+
+Over these domains, operators can define observations ($Obs$ in \Cref{fig:gdl-grammar}) that extract the relevant runtime information.
+This includes attributes of \textsf{KObject}s (e.g., whether a page has its {\tt dirty} bit set), set-level attributes of $Set[...]$s (e.g., number of objects in the set), and decisions and execution times of instrumented kernel functions.
+Any custom features that are not captured using \textsf{KObject}s or \textsf{KFunc}s, such as, the number of times an event occurs, can be specified via the \textsf{read} operation, but must be explicitly stored by the user into an in-kernel store. 
+\lang also supports aggregation of observations ($Agg$ in \Cref{fig:gdl-grammar}) for a given element in a domain over the observation window.
+This separation between inspection domains and observations is important: the former determines what objects a guardrail looks at, while the latter determines what it measures.
+
+Finally, operators write the performance condition as predicates over these observations ($Rule$ in \Cref{fig:gdl-grammar}).
+Thus, although the semantics of guardrails (in \Cref{subsec:formal-guardrails}) are defined over execution traces, \lang does not expose raw traces directly to the operator.
+Instead, it provides a structured interface for expressing performance conditions concisely.
+
+\paragraph{Trigger positions.}
+In principle, any point in the execution sequence of state transitions, decisions, and events can be a trigger (by definition of $\trigger{G}$ in \Cref{subsec:formal-guardrails}).
+However, there is a cost associated with evaluating a performance property -- of reading the relevant state, computing the value of the performance condition, and then, taking the action (if needed).
+Therefore, the question is {\it when should the system incur the cost of evaluating a guardrail?}
+
+In \lang, we support two types of trigger points that map to two common types of performance properties.
+Some properties specify continuous conditions that must always hold, e.g., CPU utilization by kernel daemons should remain below a threshold, or memory fragmentation should not exceed some threshold. Such properties are not tied to specific state transitions or events and are hence best checked at regular intervals (captured by \textsf{periodic} trigger in \lang; see \Cref{fig:gdl-grammar}).
+A second class of properties evaluate the correctness (or efficacy) of a particular policy decision, e.g., whether a task placement policy led to load imbalance on a NUMA system, or whether a page promotion decision by a memory tiering policy moved a cold page into hot tier.
+In these cases, the natural point of evaluating the decision is when it is produced, i.e., at the invocation of the kernel function (captured by \textsf{on_call} trigger in \lang; see \Cref{fig:gdl-grammar}).
+
+There may be properties tied to higher-level events, where the state transition of interest may be missed by periodic sampling and cannot be captured cleanly by any single function invocation.
+Such cases can be handled by encoding the event itself as a predicate over observations and evaluating the guardrail periodically at a sufficiently fine granularity.
+The key observation is that many events of interest can be expressed as conditions over the execution trace.
+Concretely, if a guardrail $G$ is intended to enforce $\condition{G}$ each time an event $E$ (expression over observations) occurs, we can equivalently specify it as a guardrail $G'$ triggered periodically with the condition $E\implies\condition{G}$. Under a sufficiently small period, $G'$ will evaluate the condition $\condition{G}$ only in cases when the event predicate $E$ holds.
+
+\paragraph{Observation Window.}
+The observation window, $\window{G}$ over which the performance condition is computed, results in a finite execution sequence before or after the trigger position (see \Cref{subsec:formal-guardrails}).
+\lang exposes this choice directly as the observation-window primitive ($ObsW$ in \Cref{fig:gdl-grammar}), that allows operators to use relevant system state from a bounded time before a trigger point (denoted $\vartriangleleft$ in \lang syntax) or a bounded time post a trigger point (denoted $\vartriangleright$ in \lang syntax).
+We show examples of each of these in \Cref{sec:case-studies}.
+
+\paragraph{Actions.}
+A guardrail in \lang must also determine how the system should respond when a property is violated. \lang therefore includes an explicit $Action$ primitive.
+While the space of possible corrective actions is broad -- different policies and different classes of violations may require different interventions -- in \lang, we intentionally expose a narrow action interface, that supports two types of actions:
+The first is a non-intrusive action, \textsf{Report} that records whenever violations occur, for offline diagnosis. Such reports can help in designing new policies altogether \ds{Add forward pointer to an example}.
+The second is a corrective action, \textsf{Set}$(flag, val)$ which modifies a control flag or parameter to alter subsequent system behavior.
+Such updates may tune parameters, indirectly switch operating modes, select a different policy, or revert to a default configuration.
+Rather than encoding arbitrary recovery logic in the DSL, \lang uses these actions as a narrow interface to policy-specific mechanisms already implemented in the system.
+
+
+\subsection{From Guardrails to Performance Reliability}\label{subsec:formal-basis}
+
+
+\ds{Want to provide some theoretical guarantees here -- on whether every violation can be captured by GDL, etc.}
+
+In this section, we will first formally describe the guardrail abstraction and then show how guardrails enable performance reliability.
+
+At a high level, any OS policy consumes the current OS state, where the state is a mapping from system statistics to values, and uses this state to compute a decision. This decision is then consumed by the OS, resulting in a new system state.
+Formally, we say the policy $\pi$ executes within a system $S$ (the OS as a whole, or a specific subsystem that $\pi$ is a part of).
+$\pi$ is then a function in $\states\rightarrow\decisions$, where $\states$ denotes the set of all possible states of the system $S$, and $\decisions$ denotes the range of policy outputs.
+Let $\exec{S}{\pi}$ denote the set of possible executions of $\pi$ in system $S$.
+
+\ds{WIP.}
+
+\paragraph{Performance Reliability.}
+We define performance reliability as a characteristic of an OS policy where it meets a given performance property for all possible executions of the policy under different contexts. Formally:
+Let $\pi$ denote a given OS policy and $S$ denote the relevant subsystem of the OS that $\pi$ impacts. 
+
+Given a policy $\pi$ in system $S$, $t \in [S(\pi)] . m(t) \models \varphi$
+
+Where $m(t)$ is a predicate computed over the trace $t$.
+
+\ds{Need some bridge here.}
+
+The above is equivalent to monitoring a safety property for a given trace. Formally, it implies that the property must be met for all prefixes of the trace:
+
+Given a policy $\pi$ in system $S$, and an execution trace $t \in [S(\pi)]$, $\forall \sigma \in t^{-} m(\sigma) \models \varphi$
+
+The above also implies that we can only specify properties that can be computed over arbitrary prefixes of traces. Hence, properties such as $X$ eventually happens -- for example, the memory bandwidth utilization eventually reaches $100\%$ cannot be captured in the above framework. This is also intentional since such properties are hard to ensure at run time.
+

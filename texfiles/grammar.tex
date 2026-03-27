@@ -1,0 +1,102 @@
+\begin{figure}[t]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{2pt}
+\begin{tabular}{rclp{3.4cm}}
+\textbf{Monitor} 
+& ::= &
+\parbox[t]{3cm}{
+\textsf{\textbf{for}} \textsf{policies}\newline
+\textsf{\textbf{when}} $Trigger$\newline
+\textsf{\textbf{check}} $Rule$\newline
+\textsf{\textbf{over}} $Window$?\newline
+\textsf{\textbf{on_failure}} $Action$
+}
+& \textbf{Guardrail monitor\newline specification} \\[4pt]
+
+\textbf{Trigger} 
+& ::= & & \textbf{Types of triggers} \\
+& & $\textsf{periodic}(duration)$ 
+& Every $duration$ seconds \\
+& $\mid$ & $\textsf{on\_call}(\textsf{KFunc})$ 
+& On invocation of \textsf{KFunc} \\[4pt]
+% & $\mid$ & $\textsf{on\_event}(Event)$ 
+% & On custom events \\[4pt]
+
+% \textbf{Event}
+% & ::= & $Rule$ & \textbf{Custom events as rules} \\[4pt]
+
+\textbf{Rule} 
+& ::= & & \textbf{Performance conditions} \\
+& & $Expr \bowtie Expr$
+& Expressions \\
+& $\mid$ & $\neg Rule$
+& Unary operation \\
+& $\mid$ & $Rule_1 \square Rule_2$
+& Logical operations \\
+& $\mid$ & $\forall x : Domain\ .\ Rule$
+& Rule holds for all elements of type $Domain$ \\
+& $\mid$ & $\exists x : Domain\ .\ Rule$
+& Rule holds for at least one element of type $Domain$ \\[4pt]
+
+\textbf{Window} 
+& ::= & $\lastk{k}\ \mid\ \nextk{k}$ 
+& \textbf{Observation window}\newline(Last $k$ or next $k$ seconds) \\[4pt] 
+
+\textbf{Action}
+& ::= & & \textbf{Types of actions} \\
+& & \textsf{Report}
+& Log guardrail violation \\
+& $\mid$ & $\textsf{Set}(flag, val)$
+& Set $flag$ to change policy \\
+& $\mid$ & $\forall x : Domain\ .\ Action$
+& Perform the same action for all elements of type $Domain$ \\[4pt]
+
+\textbf{Expr}
+& ::= & $Obs\ \mid Val$
+& Observations and constants \\
+& $\mid$ & $Expr \oplus Expr$
+& Arithmetic combinations \\[4pt]
+
+\textbf{Domain} 
+& ::= & & \textbf{Possible inspection objects} \\
+& & \textsf{KObject}
+& Kernel objects and structs, e.g., page, process, etc. \\
+& $\mid$ & $Set[\textsf{KObject}]$
+& Sets of kernel objects \\
+& $\mid$ & \textsf{KFunc}
+& Kernel function symbols \\[4pt]
+
+\textbf{Obs} 
+& ::= & & \textbf{Observations} \\
+& & $\textsf{attribute}(\textsf{KObject})$ 
+& Object attribute \\
+& $\mid$ & $\textsf{attribute}(Set[\textsf{KObject}])$ 
+& Set attribute \\
+& $\mid$ & $\textsf{decision}(\textsf{KFunc})$ 
+& Function decision value \\
+& $\mid$ & $\textsf{exec\_time}(\textsf{KFunc})$ 
+& Function execution time \\
+& $\mid$ & $\textsf{arg}(\textsf{KFunc}, name)$ 
+& Get the value of the $name$ argument for \textsf{KFunc} invocation \\
+& $\mid$ & $\textsf{read}(\textsf{Feature})$ 
+& Read from in-kernel store \\
+& $\mid$ & $Agg(Obs)$ 
+& Aggregation \\[4pt]
+
+\textbf{Agg} 
+& ::= & \textsf{avg} $\mid$ \textsf{min} $\mid$ \textsf{max} $\mid$ \textsf{sum} 
+& Aggregation operators \\[4pt]
+
+$\oplus$ & $\in$ & $\{+,-,*,/\}$
+& Arithmetic operators \\[4pt]
+
+$\bowtie$ & $\in$ & $\{>,<,\geq,\leq,=\}$
+& Comparison operators \\[4pt]
+
+$\square$ & $\in$ & $\{\wedge,\vee,\implies,\iff\}$
+& Logical operators
+\end{tabular}
+\caption{Grammar of the Guardrails Description Language (GDL). \todo{Add the grammar for distribution checks.}}
+\label{fig:gdl-grammar}
+\end{figure}

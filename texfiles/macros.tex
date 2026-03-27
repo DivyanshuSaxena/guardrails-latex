@@ -1,0 +1,84 @@
+\newcommand{\lang}{GDL\xspace}
+\newcommand{\noregression}{{\mdseries\upshape\textsc{NonDegradation}}\xspace}
+\newcommand{\perfsafety}{{\mdseries\upshape\textsc{PerfSafety}}\xspace}
+
+\let\oldtt\tt
+\renewcommand{\tt}{\oldtt\small}
+
+% Notations
+\newcommand{\decisions}{\mathcal{D}}
+\newcommand{\policies}{\Pi}
+\newcommand{\policy}{\pi}
+\newcommand{\states}{\mathcal{X}}
+\newcommand{\guardrails}{\mathcal{G}}
+\newcommand{\monitors}{\mathcal{M}}
+\newcommand{\enabledMap}{\Sigma}
+\newcommand{\transitions}{\tau}
+\newcommand{\exec}[2]{\mathcal{E}(#1,#2)}
+\newcommand{\execwindow}[2]{\mathcal{E}_{\subset}(#1,#2)}
+\newcommand{\trigger}[1]{T_{#1}}
+\newcommand{\window}[1]{W_{#1}}
+\newcommand{\condition}[1]{\phi_{#1}}
+\newcommand{\action}[1]{A_{#1}}
+\newcommand{\actions}{\mathcal{A}}
+\newcommand{\runtimestate}[3]{\langle#1,#2,#3\rangle}
+\newcommand{\lastk}[1]{\textsf{last}_{#1}}
+\newcommand{\nextk}[1]{\textsf{next}_{#1}}
+
+% Semantics
+\newcommand{\guard}[4]{#1\vdash#2,#3\Rightarrow#4}
+\newcommand{\monitor}[4]{#1\vdash#2,#3\rightsquigarrow#4}
+\newcommand{\transition}[3]{#1\vdash#2\longrightarrow#3}
+
+% Custom listing
+\newtcblisting{dslbox}{
+  listing only,
+  breakable,
+  colback=gray!5,
+  colframe=black!70,
+  boxrule=0.5pt,
+  arc=2pt,
+  % boxsep=0pt,
+  left=2pt,
+  right=2pt,
+  top=2pt,
+  bottom=2pt,
+  listing options={
+    language=GuardrailsDSL,
+    basicstyle=\ttfamily\small,
+    columns=fullflexible,
+    mathescape=true,
+    keepspaces=true,
+    showstringspaces=false,
+    aboveskip=0pt,
+    belowskip=0pt,
+    xleftmargin=0pt,
+    xrightmargin=0pt,
+  }
+}
+
+% --- colors ---
+\definecolor{dslkeyword}{RGB}{0,92,175}
+\definecolor{dsltype}{RGB}{140,60,20}
+\definecolor{dslaction}{RGB}{160,30,90}
+\definecolor{dslcomment}{RGB}{90,90,90}
+
+% --- language ---
+\lstdefinelanguage{GuardrailsDSL}{
+  sensitive=true,
+  alsoletter={_},
+  morekeywords=[1]{for,policies,when,check,over,on_failure},
+  morekeywords=[2]{periodic,on_call,last,next,decision,exec_time,arg,read,avg,min,max,sum},
+  morekeywords=[3]{Report,Set},
+  morekeywords=[4]{guardrail},
+  keywordstyle=[1]\color{dslkeyword}\bfseries,
+  keywordstyle=[2]\color{teal!70!black},
+  keywordstyle=[3]\color{dslaction}\bfseries,
+  keywordstyle=[4]\color{dsltype}\bfseries,
+  keywordstyle=[5]\color{orange!80!black}\bfseries,
+  comment=[l]{//},
+  commentstyle=\color{dslcomment}\itshape,
+  showstringspaces=false,
+  keepspaces=true,
+  columns=fullflexible,
+}

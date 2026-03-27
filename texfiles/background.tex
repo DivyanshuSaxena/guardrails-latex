@@ -1,1 +1,33 @@
-\section{Background}\label{sec:background}
+\section{Background and Related Work}\label{sec:background}
+
+\subsection{Trends in Workload-specific OS Policies}
+Conventionally, OS policies have relied on broad, fairly stable assumptions: that workloads exhibit similar locality patterns, that hardware behavior can be summarized by a small set of predictable trends, and that performance tradeoffs profiled once will remain valid across deployments.
+While this single policy was still not optimal, it was optimal to use it for general-purpose applications \ds{why?}.
+While such one-size-fits-all policies were rarely optimal for every application, they were a reasonable compromise for general-purpose systems, where broad applicability and robustness mattered more than per-workload optimality.
+However, recent trends suggest that these assumptions break down more often in modern environments, where applications have diverse requirements, and both workloads and hardware evolve rapidly over time.
+
+Using the running example from \Cref{fig:intro-example}, CBMM provides workload-specific insights by using preloaded profiles for hugepage promotion benefits. This makes CBMM effective when those profiles are representative, but it also means the policy depends on the continued validity of profiled assumptions about application memory behavior and machine conditions.
+Similarly, FLUX~\cite{flux-nsdi19} uses a learned flow-size predictor model in network flow scheduling. While the trained model provides accurate predictions for the flows from specific large-scale applications, we found that the model does not generalize to other small-sized flows generated from a different application (see \Cref{subsec:flux-case-study}).
+More broadly, these examples reflect that modern OS policies increasingly encode assumptions about the workload classes they were trained, profiled, or designed for. When those assumptions fail, performance can silently degrade even though the mechanism itself continues to function correctly.
+\ds{Add experiments to support the above two claims.}
+
+There are plenty similar examples in recent works.
+Consider the Linux kernel page cache policy as an example: {\tt cache_ext}~\cite{cache-ext-sosp25} demonstrates that the best-performing eviction heuristic changes for different workloads: while LFU results in the best throughput for YCSB traces, the study reports that for Twitter traces, LFU is seldom the optimal, and the best performing heuristic can vary between S3-FIFO~\cite{s3fifo-sigcomm}, MGLRU, and LHD.
+Thus, choosing the eviction policy based on the performance of just one workload may result in sub-optimal performance on other workloads.
+
+As another example, consider the problem of dispatching I/O requests to SSD devices.
+LinnOS~\cite{linnos-osdi20} proposes a learning-based model to predict the I/O latencies, reporting high accuracy and low inference overhead on the devices and traces it studied.
+However, it was later reported~\cite{heimdall-eurosys25} that the performance of the LinnOS model degraded to only 67\% accuracy on faster devices that were, notably, released around the same time frame as the devices studied by LinnOS.
+The takeaway is not that LinnOS was wrong; rather, it is that even sophisticated policy can be tightly coupled to particular hardware characteristics that evolve over time, and change from vendor to vendor.
+
+\ds{Add the argument that this guardrail-style of policy development has been applied previously, but in an ad-hoc manner -- we provide a framework to do it in a principled way.}
+
+\sujay{We could add some examples motivating need for perf introspection. Why is it more important today than before? I can think of 2 reasons: 1) learned policies, understanding the behavior of which is more difficult, and 2) instance-optimal heuristics which may work well for one workload but perform poorly for another. We could add examples or some data for this.}
+
+
+\subsection{Related Work}
+\todo{
+
+\noindent
+\textbf{Related Work:} (i) Kernel verification type work, which deals with safety and correctness, not performance, (ii) Monitoring and debugging frameworks, (iii) Guardrails HotOS work and deltas over it.
+}

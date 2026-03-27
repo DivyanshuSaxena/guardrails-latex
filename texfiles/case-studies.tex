@@ -1,0 +1,178 @@
+\section{Case Studies}\label{sec:case-studies}
+
+% \ds{TODO: This section is just a list of pointers. Need to write properly.}
+We demonstrate the expressiveness and practicality of guardrails through multiple case studies spanning both traditional kernel mechanisms \aditya{mechanisms?} and learned policies.
+
+
+\subsection{Transparent Hugepage Promotion in CBMM}
+\label{subsec:cbmm-case-study}
+
+Hugepages reduce TLB pressure and reduce address translation costs, but aggressive promotion can incur high page fault latencies, high background overhead via \texttt{khugepaged}, and result in memory bloat.
+CBMM~\cite{cbmm-atc22} is a memory management policy built on top of the THP policy in the Linux kernel that uses a cost-benefit analysis to decide which page ranges should be promoted to hugepages.
+Specifically, a hugepage is only promoted if the cost, in terms of the estimated CPU cycles needed for allocation, is lower than the estimated benefit, in terms of CPU cycles saved by promoting a hugepage.
+While CBMM uses real-time signals (e.g., number of zeroed and free pages) to estimate the cost, the benefits are profiled offline for the specific workload.
+% We implement three complementary guardrails capturing benefit alignment, outcome regret, and overhead constraints.
+
+\paragraph{Benefit correction guardrail.}
+Offline profiled benefits do not account for workload phase changes or the impact of contention because of other processes on the system.
+Thus, the estimated benefits may be incorrect for real-time conditions.
+Ideally, the benefit of a hugepage promotion should be the number of CPU cycles it can save before it is demoted back to a set of base pages.
+The number of CPU cycles saved, in turn, is proportional to the number of accesses made to the page region.
+With this intuition, we design the following {\tt BenefitCorrection} guardrail to check if the benefits between two page regions follow the same relationship as the number of accesses to them. \ds{Need to find out $expr$ based on experiments.}
+\begin{dslbox}
+guardrail BenefitCorrection {
+  for CBMM
+  when periodic(2s)
+  over last$_2$
+  check $\forall P_i,P_j \in Set[{\sf Page}]$ (
+        accesses($P_i$) > accesses($P_j$)
+        $\implies$read(Benefit[$P_i$]) > read(Benefit[$P_j$])
+    )
+  on_failure $\forall P_i\in Set[{\sf Page}]$ Set$(\Delta{\sf benefit}[P_i], expr)$
+}
+\end{dslbox}
+The above guardrail uses several primitives introduced in \Cref{fig:gdl-grammar}.
+$P_i$ and $P_j$ are page regions (and hence, of the type $Set[{\sf Page}]$).
+The guardrail uses the attributes {\tt accesses} for each page region and reads the {\tt Benefit} map as a feature in the in-kernel store.
+The guardrail action is to set per-page-region parameters, $\Delta{\sf benefit}$ which prescribes by how much the benefit should change for a given page region. 
+As mentioned previously, the mechanism to collect the per-page-region attribute ({\tt accesses} as well as the mechanism to enforce the change in benefits (via the {\sf Set} action) must be implemented by the user.
+
+\paragraph{Verifying \noregression property.}
+As described above, the estimated costs and benefits may be incorrect for a live system.
+Thus, the \noregression property dictates that after the update as per the corrective action in {\tt BenefitCorrection}, the estimated costs and benefits must not become more inaccurate compared to the true cost and benefit.  
+Say the current estimated cost and benefit of a page region $P_i$ are denoted by $c_i$ and $b_i$, respectively, and the true cost and benefit of the page region are denoted by $c_i^*$ and $b_i^*$, respectively.
+Let us also assume that the corrective action results in a new benefit for this page region, $b_i'$. Then, for \noregression, we have: 
+\( \forall P_i (c_i^* > b_i^* \wedge c_i > b_i \implies c_i > b_i') \) and
+\( \forall P_i (c_i^* < b_i^* \wedge c_i < b_i \implies c_i < b_i') \).
+This property states that whenever the cost-benefit relationship for the CBMM policy is correct, the benefit-update action maintains it.
+\todo{Discuss verification method in detail here.}
+
+\paragraph{Implementation.}
+\todo{Add details about the kernel modules and eBPF programs needed to track accesses and benefits.}
+
+\paragraph{Results.}
+\todo{Experiments underway.}
+
+
+\subsection{Memory Compaction in Linux}\label{subsec:compaction-case-study}
+
+Linux performs memory compaction to create physically contiguous free memory required for large allocations such as hugepages and certain device buffers.
+Compaction in the Linux kernel can occur either asynchronously via the {\tt kcompactd} daemon or synchronously along page allocation paths.
+Whether invoked via hugepage allocation or the {\tt kcompactd} daemon, the compaction is performed by invoking the {\tt compact_zone()} function.
+
+\paragraph{Bounded overhead guardrail.}
+While compaction improves allocation success rates and reduces fragmentation, it can incur substantial CPU overhead and stall latency under memory pressure. 
+In particular, this memory pressure is elevated when hugepage allocation is enabled because of memory bloat~\cite{cbmm-atc22}. \ds{Any other cites?}
+Thus, we design a combination of two guardrails specifically when transparent hugepage promotion is active.
+The first is a guardrail that checks if the cost of running compaction is bounded by a threshold and if not, it temporarily switches off hugepages. The second guardrail restores hugepage allocations after waiting for a fixed duration. In \lang syntax, these guardrails are described as:  
+\begin{dslbox}
+guardrail CompactionOverhead {
+  for THPAlways
+  when periodic(10s)
+  over last$_{10}$
+  check $\forall e \in$ compact_zone() avg(exec_time(e)) < 10ms
+  on_failure Set(thp_policy, THPNever)
+}
+guardrail RestoreTHP {
+  for THPNever
+  when periodic(10s)
+  check True
+  on_failure Set(thp_policy, THPAlways)
+}
+\end{dslbox}
+
+% \ds{We probably need to add some syntax for guardrails to check if other guardrails are installed -- e.g., RestoreTHP by itself should not be triggered.}
+Note that the {\tt CompactionOverhead} guardrail is only valid when the THP policy is {\tt THPAlways}, that is, the {\tt thp_enabled} flag in Linux is set to {\tt always}.
+The guardrail checks if the average execution time for the kernel function {\tt compact_zone()} over 10-second windows is less than 100 ms, and the prescribed corrective action is to change the policy to {\tt THPNever}.
+Further, note that the policy {\tt THPNever} has the {\tt RestoreTHP} guardrail that switches the THP policy back to {\tt THPAlways} after a 10 second period.
+The goal of this corrective action is to allow processes to use fragmented memory regions before switching hugepages back again.
+\ds{@Sujay: I added the previous statement as an intuitive explanation. Please confirm if this statement is accurate?}
+
+\paragraph{Verifying \noregression property.}
+\todo{Need to figure out what no-regression means here.}
+
+\paragraph{Implementation.}
+\todo{Add details of eBPF programs needed for this.}
+
+\paragraph{Results.}
+\todo{Experiments underway.}    
+
+\subsection{Learned Flow Scheduling}\label{subsec:flux-case-study}
+
+In computer networks, the `flow' is the basic abstraction for point-to-point connections.
+In datacenter networks, servers typically have several outgoing flows competing for the network bandwidth. Hence, how these flows are scheduled plays a crucial role in minimizing the end-to-end latency.
+Several prior works have shown that advance knowledge of flow sizes (the amount of bytes that a flow must send) is a useful signal for developing better scheduling algorithms~\cite{pfabric-sigcomm13,fastpass-sigcomm14,homa-sigcomm18}.
+The question then is whether we can estimate the size of the flow at its start reliably. 
+Prior works~\cite{flux-nsdi19} have investigated the use of learned approaches to estimate the size of the flow, but found it to suffer from poor generalization.
+
+A key reason for such poor generalization is that the features used for size predictions come from a very big distribution, and that the real-time inference requirements prohibit the use of large neural networks needed to generalize for such large input distributions.
+For example, the learned model uses the network usage of the process until the flow starts. Besides being dependent on the flow itself, depending on whether a process is long running or not, these features can have widely different values.
+In principle, enough data from multiple applications and a large enough neural network to ingest this data would be able to generalize well. However, the inference must also be carried out quickly to make the predicted sizes available for the scheduler. This restricts the choice of models to small neural networks that may fail to generalize to such diverse features.
+In this study, we build two neural networks -- one trained on flows from long-running data-processing jobs, and another trained on flows from short echo server applications.
+These two neural networks can be thought of as two different specialized policies: {\tt FLUXShortPredictor} and {\tt FLUXLongPredictor}.
+
+We deploy these trained neural networks via a combined kernel- and user-space pipeline, where the kernel collects features at the start of the flow and writes them to an eBPF map. Then, a userspace daemon reads the features and runs the neural network inference to get the predicted size. This size is then written back to a socket that is read in the kernel.
+
+\paragraph{In-distribution check guardrail.}
+To achieve good predictions, we must use the correct models depending on whether the features for a new flow are in-distribution or not. 
+Thus, we explore the usage of a guardrail to use the correct specialized prediction model based on whether the input features of a new flow are in-distribution.
+\begin{dslbox}
+guardrail InDistributionShort {
+  for FLUXShortPredictor
+  when on_call(flow_start)
+  check $agg\_net \sim$ read(ShortDist[agg_net]) $\wedge$
+        $cpu \sim$ read(ShortDist[cpu]) $\wedge$
+        $ram \sim$ read(ShortDist[ram]) $\wedge\ \dots$
+  on_failure Set(flux_policy, FLUXLongPredictor)
+}
+guardrail InDistributionLong {
+  for ${\sf FLUXLongPredictor}$
+  when on_call(${\sf flow\_start}$)
+  check $agg\_net \sim$ read(LongDist[agg_net]) $\wedge$
+        $cpu \sim$ read(LongDist[cpu]) $\wedge$
+        $ram \sim$ read(LongDist[ram]) $\wedge\ \dots$
+  on_failure Set(flux_policy, FLUXShortPredictor)
+}
+\end{dslbox}
+
+The above guardrails read the features to the prediction models ($agg\_net$, $cpu$, $ram$, etc.) and check whether they are from the same distribution as the training data distribution for the specific feature.
+These training data distributions are assumed to be readable from maps {\tt ShortDist} and {\tt LongDist} for the {\tt FLUXShortPredictor} and {\tt FLUXLongPredictor} models, respectively.
+The operator $\sim$ returns true if the probability of a value being in a distribution is above a permissible bound.
+Note that in the case when an input feature is out of distribution for either models, the outcome is non-deterministic as the guardrail cannot impose any selection. \aditya{I don't understand the action. why do you switch to long when short fails -- i.e. why is that switch kosher?}
+
+\paragraph{Decision quality guardrail.}
+Even after an input is in distribution for a prediction model, if the training did not complete properly, it can still lead to incorrect outputs.
+Thus, besides a check on the inputs to the predictor, we must also evaluate the decision quality post-facto.
+In this case study, this is feasible because the ground-truth for the flow sizes will be available when the flow ends. At that point, we can check if the predicted sizes were correct or not. We enforce this via the following guardrail:
+\begin{dslbox}
+guardrail FLUXDecisionQuality {
+  for FLUXShortPredictor, FLUXLongPredictor
+  when periodic(30s)
+  over last$_{30}$
+  check avg(
+        Decision[arg(flow_end, flow_id)]) -
+        FlowSize[arg(flow_end, flow_id)])
+    ) < 10%
+  on_failure Set(flow_scheduler, Default)
+}
+\end{dslbox}
+
+The above guardrail assumes that the decisions made when the {\tt flow_start} function is called, is stored in the map {\tt Decision}, indexed by the flow ID. Further, the true sizes must also be stored in the map {\tt FlowSize} (available when the flow has ended.
+The action for this guardrail is to fallback to the default flow scheduling policy, as the prediction decisions are not accurate.
+
+\aditya{in- vs out-of-dist applies to non-learned policies too? likewise, does decision quality extend to non-learned?}
+
+\paragraph{Verifying \noregression property.}
+\todo{Need to figure out what no-regression means here. For the former, it is probably easier -- much harder for the latter.}
+
+\paragraph{Implementation.}
+\todo{Add details of eBPF programs needed for this.}
+
+\paragraph{Results.}
+\todo{Experiments underway.}    
+
+\subsection{Case Study 4: Learned CPU Load Balancing}
+
+\ds{WIP.}
+
+Linux load balancing (e.g., via \texttt{can\_migrate\_task()}) distributes runnable tasks across CPUs while respecting locality and fairness constraints. Learned replacements can better capture complex workload patterns but introduce overhead along hot scheduling paths.

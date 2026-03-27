@@ -1,11 +1,11 @@
-\documentclass[sigconf,10pt,nonacm]{acmart}
+\documentclass[sigplan,10pt]{acmart}
 
-\settopmatter{printacmref=false} % Removes ACM reference format
+\settopmatter{printacmref=false,printfolios=true}
+\renewcommand\footnotetextcopyrightpermission[1]{}
 
 
 \usepackage[utf8]{inputenc} % allow utf-8 input
 \usepackage[T1]{fontenc}    % use 8-bit T1 fonts
-\usepackage{hyperref}       % hyperlinks
 \usepackage{hyperref}
 \hypersetup{
     colorlinks=true,
@@ -22,6 +22,18 @@
 \usepackage{enumitem}
 \usepackage{authblk}
 
+% Added libraries
+\usepackage{cleveref}
+\usepackage{xspace}
+\usepackage{mathpartir}
+\usepackage{makecell}
+\usepackage{listings}
+% \usepackage[scaled=0.8]{beramono}
+\usepackage[most]{tcolorbox}
+\usepackage{syntax}
+\setlength{\grammarindent}{7em}
+\setlength{\grammarparsep}{0pt plus 0pt minus 0pt} % decrease separation between rules
+
 % Libraries for Giant Table
 \usepackage{array}
 \usepackage{amsmath}
@@ -29,7 +41,7 @@
 \usepackage{changepage}
 \usepackage{multirow}
 \usepackage{wrapfig}
-\usepackage[small, compact]{titlesec}
+% \usepackage[small, compact]{titlesec}
 
 \usepackage[font={small}]{caption}
 \usepackage[export]{adjustbox}
@@ -51,10 +63,14 @@
 \newcommand{\ds}[1]{}
 \newcommand{\aditya}[1]{}
 \newcommand{\sujay}[1]{}
+\newcommand{\eric}[1]{}
+\newcommand{\isil}[1]{}
 \renewcommand{\todo}[1]{{\color{blue}\textbf{TODO:} #1}}
 \renewcommand{\ds}[1]{{\color{teal}\textbf{[ds]:} #1}}
 \renewcommand{\aditya}[1]{{\color{purple}\textbf{[aditya]:} #1}}
 \renewcommand{\sujay}[1]{{\color{brown}\textbf{[sujay]:} #1}}
+\renewcommand{\eric}[1]{{\color{teal}\textbf{[eric]:} #1}}
+\renewcommand{\isil}[1]{{\color{magenta}\textbf{[Isil]:} #1}}
 
 %% A dense itemize environment
 \newenvironment{denseitemize}{
@@ -67,15 +83,17 @@
 }{\end{enumerate}}
 
 % Reduce spacing after headings
-\titlespacing*\section{0pt}{0pt plus 2pt minus 2pt}{0pt plus 2pt minus 2pt}
-\titlespacing*\subsection{0pt}{0pt plus 2pt minus 2pt}{0pt plus 2pt minus 2pt}
-\titlespacing*\subsubsection{0pt}{0pt plus 2pt minus 2pt}{0pt plus 2pt minus 2pt}
+% \titlespacing*\section{0pt}{0pt plus 2pt minus 2pt}{0pt plus 2pt minus 2pt}
+% \titlespacing*\subsection{0pt}{0pt plus 2pt minus 2pt}{0pt plus 2pt minus 2pt}
+% \titlespacing*\subsubsection{0pt}{0pt plus 2pt minus 2pt}{0pt plus 2pt minus 2pt}
 
 \makeatletter
 \renewcommand\AB@affilsepx{, \protect\Affilfont}
 \makeatother
 
-\title{Performance Introspection for the OS}
+\input{texfiles/macros}
+
+\title{Performance Introspection for OS Policies}
 
 % The \author macro works with any number of authors. There are two commands
 % used to separate the names and addresses of multiple authors: \And and \AND.
@@ -90,16 +108,21 @@
 \begin{document}
 
 \maketitle
+\pagestyle{plain}
+
 \input{texfiles/introduction}
 \input{texfiles/background}
 \input{texfiles/guardrails}
+\input{texfiles/language-scratch}
+\input{texfiles/infrastructure}
+\input{texfiles/case-studies}
 \input{texfiles/discussion}
 \input{texfiles/summary}
 
 \bibliography{refs.bib}
 \bibliographystyle{plainnat}
 
-% \input{texfiles/appendix}
+\input{texfiles/appendix}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
