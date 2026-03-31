@@ -177,4 +177,26 @@ The action for this guardrail is to fallback to the default flow scheduling poli
 
 Linux load balancing (e.g., via \texttt{can\_migrate\_task()}) distributes runnable tasks across CPUs while respecting locality and fairness constraints. Learned replacements can better capture complex workload patterns but introduce overhead along hot scheduling paths.
 
+The detector determines whether a run has entered a persistent imbalance regime. It samples \texttt{/proc/stat} every 250ms, aggregates samples into 30-second windows, ranks cores by mean utilization, and focuses on the 12 busiest cores. For each window, it asks whether the machine appears stuck on the same small hot set of CPUs. A window is marked bad only if all of the following hold:
+\begin{itemize}
+  \item \textbf{Average machine utilization is at least 25\%.} This avoids reacting when the system is lightly loaded and placement differences are not yet harmful.
+  \item \textbf{The busiest 12 cores average at least 65\% utilization.} This ensures the hot set is truly saturated.
+  \item \textbf{The gap between the busiest 12 cores and the remaining cores is at least 25 percentage points.} This ensures the imbalance is large enough to matter.
+  \item \textbf{The busiest 12 cores carry at least 50\% of all measured utilization.} This confirms that a disproportionate amount of work is concentrated on that hot set.
+  \item \textbf{At least 20\% of cores are effectively idle, meaning they stay below 20\% utilization.} This distinguishes true stranding from a machine that is simply busy everywhere.
+  \item \textbf{The current top-12 set overlaps at least 90\% with the previous window's top-12 set.} This makes the detector respond to persistent collapse onto the same cores rather than normal rotation.
+\end{itemize}
+
+To classify a run as bad, the detector requires 7 consecutive bad windows. This conservative streak rule improves detection accuracy by filtering out short-lived imbalance episodes.
+
+The guardrail uses the same bad-window signal but a different decision rule. Requiring 7 consecutive bad windows improves detection accuracy, but it can delay intervention by several minutes. For performance protection, the guardrail instead falls back as soon as the first bad window is observed. This increases false positives relative to the detector, but it reduces time spent in the harmful hot-set state.
+
+The harness provides three user-facing modes:
+\begin{itemize}
+  \item \texttt{report-only} runs only the detector and never toggles the scheduler.
+  \item \texttt{fallback} applies the aggressive guardrail policy: once the first bad window is seen, it stops \texttt{jc\_sched} and leaves Linux in control for the rest of the run.
+  \item \texttt{fast-recover} also falls back on the first bad window, but restores the learned scheduler after 7 consecutive non-bad windows. This is what the guardrail we used here does.
+\end{itemize}
+
+The workload runner launches the detector as a sidecar and, when actuation is enabled, uses a small control script to stop or re-enable the learned load balancer.
 

@@ -1,0 +1,220 @@
+\section{Lightweight Verification for Guardrails}\label{sec:verification}
+
+While the previous section described how to design useful run-time monitorable properties and executable actions, guardrails must eventually meet some high-level performance objective (\perfsafety in our workflow; see \Cref{fig:framework-overview}). 
+This objective may itself be difficult or inefficient to monitor at run-time, e.g., because it depends on oracle knowledge such as future accesses.
+Further, one may deploy multiple guardrails at once, so the goal is not just for each guardrail to behave reasonably in isolation, but for all installed guardrails together to satisfy \perfsafety.
+We reason about this using a simple verification framework that decomposes the problem into two steps.
+First, for each guardrail individually, we verify that its run-time property and action satisfy an appropriate local guarantee under some model of policy-system interaction.
+Then, {\em under the same model}, we verify that these local guarantees together imply the intended high-level objective.
+% Because developing a policy-system interaction model is not always feasible, the framework also permits unverifiable guardrails, but provides formal guarantees only for those that can be verified.
+Below, we first develop the necessary notations and semantics for guardrails, and then present the verification framework.
+
+
+\subsection{Semantics of Guardrails}
+\label{subsec:semantics}
+
+% \paragraph{Notation.}
+We consider the application of a guardrail to a policy $\policy$ in system $S$ (where the system could be the OS as a whole, or a specific subsystem that the policy under evaluation is a part of).
+Let $\states$ denote the set of possible system states for $S$ (including various statistics and state of in-kernel objects), and let $\policies$ denote the set of policies that may be deployed in the system.
+% Let $\values$ denote a set of values, and let $\argspace \triangleq \values^*$ denote the set of finite lists over $\values$.
+Further, each policy $\policy \in \policies$ may be instantiated with some tunable hyper-parameters $\args$, and we write the resulting deployed policy as $\ppol{\policy}{\args}$.
+For example, for hugepage promotion, Linux and CBMM are different policies, while $\ppol{\mathrm{CBMM}}{(c,b)}$ and $\ppol{\mathrm{CBMM}}{(c',b')}$ are different parameterizations of the same policy with different cost estimations $c$ and $c'$, and different benefit estimations $b$ and $b'$ (see \Cref{fig:intro-example}).
+
+\paragraph{Guardrail definition and semantics.}
+A guardrail $G$ in a system $S$ (as defined above) is given by the triple $(\property{G},\action{G},\policies_G)$ where $\property{G}:\states\rightarrow\{0,1\}$ is the run-time monitorable property that evaulates to 0 (false) or 1 (true) for a given state $\sysstate \in \states$, and $\action{G}:\states\times\policies\rightarrow\policies$ is the specified corrective action.
+The final component, $\policies_G \subseteq \policies$, is the set of policies to which the guardrail applies; thus, a guardrail only monitors a deployed policy $\ppol{\policy}{\args}$ if $\policy \in \policies_G$ (see \textsc{Guard-Unenabled} rule in the semantics below).
+If the evaluation of a guardrail property over the current system state $\property{G}(\sysstate)$ is true, the guardrail leaves the deployed policy unchanged (see \textsc{Guard-OK} below).
+Otherwise, it runs the corrective action $\action{G}$ to produce a repaired parameterized policy (see \textsc{Guard-Violation} below).
+Formally, we write $\guard{G}{\sysstate}{\ppol{\policy}{\args}}{\ppol{\policy'}{\args'}}$ to denote that guardrail $G$ observes state $\sysstate \in \states$ under deployed policy $\ppol{\policy}{\args}$ and updates it to $\ppol{\policy'}{\args'}$.
+The semantics are:
+\begin{mathpar}
+\inferrule[Guard-Unenabled]{
+    \policy \notin \policies_G
+}{
+  \guard{(\property{G},\action{G},\policies_G)}{\sysstate}{\ppol{\policy}{\args}}{\ppol{\policy}{\args}}
+}\quad
+\inferrule[Guard-OK]{ 
+    \policy \in \policies_G \quad
+    \property{G}(\sysstate) = 1
+}{
+  \guard{(\property{G},\action{G},\policies_G)}{\sysstate}{\ppol{\policy}{\args}}{\ppol{\policy}{\args}}
+}\\
+\inferrule[Guard-Violation]{
+    \policy \in \policies_G \quad
+    \property{G}(\sysstate) = 0
+}{
+    \guard{(\property{G},\action{G},\policies_G)}{\sysstate}{\ppol{\policy}{\args}}{\action{G}(\sysstate,\ppol{\policy}{\args})}
+}
+\end{mathpar}
+
+\paragraph{Guarded-system semantics.}
+We now define the overall system semantics induced by a single guardrail $G$.
+Let a system be given by the tuple $(\states,\policies,\transitions)$, where $\states$ and $\policies$ are defined as above, and $\transitions$ is the transition relation for the system $S$: $\sysstate, \policy \transitions \sysstate'$ indicates that the system steps from $\sysstate$ to $\sysstate'$ under policy $\policy$.
+The guarded system is then, an extension of $S$, where at each step, it first checks whether the guardrail is violated and repairs the deployed parameterized policy if needed.
+This is captured by the rule:
+\begin{mathpar}
+\inferrule[Guarded-Transition]{
+    \guard{G}{\sysstate}{\ppol{\policy}{\args}}{\ppol{\policy'}{\args'}} \quad
+    \sysstate,\ppol{\policy'}{\args'} \transitions \sysstate'
+}{
+    \transition{G}{\runtimestate{\sysstate}{\ppol{\policy}{\args}}}{\runtimestate{\sysstate'}{\ppol{\policy'}{\args'}}}
+}
+\end{mathpar}
+Informally, the above rule implies the following guarded system semantics: detect whether the current state violates the guardrail for the currently deployed policy, repair the deployed parameterized policy if needed, and then take the next system step under the resulting policy. The semantics of multiple guardrails can be defined similarly by applying the above rule for each guardrail in some fixed order.
+
+\ds{We do not use the above semantics in the verification below, but they are still useful for precisely defining what guardrails do. Suggestions?}
+
+
+\subsection{Formal Verification of Performance Properties}
+\label{subsec:verification-conditions}
+
+% Performance Properties are safety properties
+% we can verify them just like any other safety properties.
+% Though we require an abstraction of the system, and a way to represent actions.
+
+The \textsc{Guarded-Transition} rule above induces a transition system over runtime states.
+The verification question is whether the local guarantees attached to the guardrails are strong enough to characterize safe states of this transition system, and whether those local guarantees for multiple guardrails together imply the desired \perfsafety property.
+For this purpose, we summarize a fixed guardrail using the following symbolic interface:
+\[
+\begin{array}{r@{\;\;:\;\;}l}
+M(\sysstate,\ppol{\policy}{\args},\sysstate') & \text{policy-system interaction model} \\[0.2em]
+P(\ppol{\policy}{\args}) & \text{policy applicability predicate} \\[0.2em]
+\property{G}(\sysstate) & \text{guardrail property} \\[0.2em]
+A(\sysstate,\ppol{\policy}{\args}) & \text{corrective policy update} \\[0.2em]
+\varphi(\sysstate,\ppol{\policy}{\args}) & \text{local guarantee} \\[0.2em]
+\Phi(\sysstate,\ppol{\policy}{\args}) & \text{global \perfsafety assertion}
+\end{array}
+\]
+Here $M$ is simply the system transition relation $\transitions$ from \Cref{subsec:formal-guardrails}, written as a predicate.
+Likewise, $P$, $S$, $A$, and $\varphi$ are the symbolic views of one guardrail's applicability condition, state condition, corrective action, and local guarantee.
+
+\paragraph{Verification interface.}
+Under the corresponding system-model step $M$, the verifier checks the following three conditions; free variables are implicitly universally quantified:
+\[
+\begin{array}{r@{\;\;\;\;}l}
+\textsc{Ok} & 
+\bigl(P(\ppol{\policy}{\args}) \land S(\sysstate) \Rightarrow \varphi(\sysstate',\ppol{\policy}{\args})\bigr)\\
+\textsc{Viol} & \bigl(P(\ppol{\policy}{\args}) \land \neg S(\sysstate) \Rightarrow \varphi(\sysstate',A(\sysstate,\ppol{\policy}{\args}))\bigr) \\[0.4em]
+\textsc{Global} & I(\sysstate,\ppol{\policy}{\args}) \Rightarrow \Phi(\sysstate,\ppol{\policy}{\args})
+\end{array}
+\]
+where $I$ is the conjunction of \textsc{OK} and $\textsc{Viol}$ for all guardrails.
+
+The \textsc{Ok} condition says that, when the deployed policy is one to which the guardrail applies and the current state already satisfies the state condition $S$, one system-model step must land in a runtime state satisfying the local guarantee $\varphi$. The \textsc{Viol} condition covers the complementary case: when the guardrail applies but the current state does not satisfy $S$, applying the corrective update $A$ and then taking one system-model step must still establish $\varphi$. Finally, \textsc{Global} says that if the conjunction $I$ of all local guarantees holds at a runtime state, then the system-wide assertion $\Phi$ must also hold there. Together, these three checks say that the local conditions are strong enough individually and sufficient collectively.
+
+\paragraph{Soundness.}
+If the initial runtime state satisfies $I$, if \textsc{Ok} and \textsc{Viol} hold for each guardrail under its chosen predicates $P$, $S$, $A$, and $\varphi$, and if \textsc{Global} holds, then every runtime state reachable under the guarded transition relation satisfies $\Phi$.
+In other words, the conjunction of the local guardrail guarantees is an inductive invariant for the outer transition system generated from the system model, and that invariant entails the global \perfsafety assertion.
+
+
+\iffalse
+
+% <=================== FULL FORMAL NOTATION ==================>
+
+\subsection{Semantics of Guardrails}
+\label{subsec:semantics}
+
+\paragraph{Notation.}
+% A guardrail can apply to the execution of the OS under some policy of interest.
+We consider the application of a guardrail to a policy $\policy$ in system $S$ (where the system could be the OS as a whole, or a specific subsystem that the policy under evaluation is a part of).
+Let $\values$ denote a set of values, and let $\argspace \triangleq \values^*$ denote the set of finite lists over $\values$.
+Each policy $\policy \in \policies$ may be instantiated with arguments $\args \in \argspace$, and we write the resulting deployed policy as $\ppol{\policy}{\args}$.
+We write
+\(
+\ParametricPolicies{\policies}{\argspace} \triangleq \{\, \ppol{\policy}{\args} \mid \policy \in \policies,\ \args \in \argspace \,\}
+\)
+for the set of parameterized policies induced by $\policies$ and argument lists from $\argspace$.
+Here, `policy' is used in the usual systems sense: Linux and CBMM are different policies, while $\ppol{\mathrm{CBMM}}{(c,b)}$ and $\ppol{\mathrm{CBMM}}{(c',b')}$ are different parameterizations of the same policy with different cost estimations $c$ and $c'$, and different benefit estimations $b$ and $b'$.
+Let $\states$ denote the set of possible system states for $S$ (including various statistics and state of in-kernel objects), and let $\policies$ denote the set of policies that may be deployed in the system.
+% We also write
+% \[
+% \ActionSet \triangleq \states \times \ParametricPolicies{\policies}{\argspace} \xrightarrow{} \ParametricPolicies{\policies}{\argspace}
+% \]
+% At runtime, the system runs a parameterized policy $\ppol{\policy}{\args} \in \ParametricPolicies{\policies}{\argspace}$.
+% We will now formally describe how a guardrail operates in this system.
+
+\paragraph{Guardrail definition and semantics.}
+A guardrail $G \in \guardrails$ in a system $S$ (as defined above) is given by the triple $(\policies_G,\states_G,\action{G})$ where $\policies_G \subseteq \policies$ is the set of policies monitored by the guardrail, $\states_G \subseteq \states$ is the set of states that the guardrail considers acceptable, and $\action{G} \in \ActionSet$.
+Informally, the guardrail monitors the current parameterized policy $\ppol{\policy}{\args}$ only when its policy $\policy$ belongs to $\policies_G$.
+If the current system state $\sysstate$ lies in $\states_G$, the guardrail leaves the deployed policy unchanged.
+Otherwise, it runs the corrective action $\action{G}$ to produce a repaired parameterized policy.
+Formally, we write $\guard{G}{\sysstate}{\ppol{\policy}{\args}}{\ppol{\policy'}{\args'}}$ to denote that guardrail $G$ observes state $\sysstate \in \states$ under deployed policy $\ppol{\policy}{\args}$ and updates it to $\ppol{\policy'}{\args'}$.
+The semantics are:
+\begin{mathpar}
+\inferrule[Guard-Unenabled]{
+    \policy \notin \policies_G
+}{
+  \guard{(\policies_G,\states_G,\action{G})}{\sysstate}{\ppol{\policy}{\args}}{\ppol{\policy}{\args}}
+}\quad
+\inferrule[Guard-OK]{ 
+    \policy \in \policies_G \quad
+    \sysstate \in \states_G
+}{
+  \guard{(\policies_G,\states_G,\action{G})}{\sysstate}{\ppol{\policy}{\args}}{\ppol{\policy}{\args}}
+}\\
+\inferrule[Guard-Violation]{
+    \policy \in \policies_G \quad
+    \sysstate \notin \states_G
+}{
+    \guard{(\policies_G,\states_G,\action{G})}{\sysstate}{\ppol{\policy}{\args}}{\action{G}(\sysstate,\ppol{\policy}{\args})}
+}
+\end{mathpar}
+
+\paragraph{Guarded-system semantics.}
+We now define the outer system semantics induced by a single guardrail $G$.
+Let a system be given by the tuple $(\states,\policies,\transitions)$, where $\sysstate, \policy \transitions \sysstate'$ for $\sysstate',\sysstate \in \states$ and $\policy \in \policies$ indicates that the system may step from $\sysstate$ to $\sysstate'$ under policy $\policy$.
+The guarded system is an extension of the underlying system, where at each step, it first checks whether the guardrail is violated and repairs the deployed parameterized policy if needed.
+This is captured by the rule:
+\begin{mathpar}
+\inferrule[Guarded-Transition]{
+    \guard{G}{\sysstate}{\ppol{\policy}{\args}}{\ppol{\policy'}{\args'}} \quad
+    \sysstate,\ppol{\policy'}{\args'} \transitions \sysstate'
+}{
+    \transition{G}{\runtimestate{\sysstate}{\ppol{\policy}{\args}}}{\runtimestate{\sysstate'}{\ppol{\policy'}{\args'}}}
+}
+\end{mathpar}
+Thus, the guarded system semantics is simple: detect whether the current state violates the guardrail for the currently deployed policy, repair the deployed parameterized policy if needed, and then take the next system step under the resulting policy. The semantics of multiple guardrails can be defined similarly by applying the above rule for each guardrail in some fixed order.
+
+
+\subsection{Formal Verification of Performance Properties}
+\label{subsec:verification-conditions}
+
+% Performance Properties are safety properties
+% we can verify them just like any other safety properties.
+% Though we require an abstraction of the system, and a way to represent actions.
+
+The guarded transition rules above induce an outer transition system over runtime states.
+The verification question is whether the local guarantees attached to the guardrails are strong enough to characterize safe states of this transition system, and whether those local guarantees together imply the desired system-wide property.
+For this purpose, we summarize a fixed guardrail using the following symbolic interface:
+\[
+\begin{array}{r@{\;\;:\;\;}l}
+M(\sysstate,\ppol{\policy}{\args},\sysstate') & \text{system model step relation} \\[0.2em]
+P(\ppol{\policy}{\args}) & \text{policy applicability predicate} \\[0.2em]
+S(\sysstate) & \text{guardrail condition} \\[0.2em]
+A(\sysstate,\ppol{\policy}{\args}) & \text{corrective policy update} \\[0.2em]
+\varphi(\sysstate,\ppol{\policy}{\args}) & \text{local guarantee} \\[0.2em]
+\Phi(\sysstate,\ppol{\policy}{\args}) & \text{global \perfsafety assertion}
+\end{array}
+\]
+Here $M$ is simply the system transition relation from \Cref{subsec:formal-guardrails}, written as a predicate.
+Likewise, $P$, $S$, $A$, and $\varphi$ are the symbolic views of one guardrail's applicability condition, state condition, corrective action, and local guarantee.
+
+\paragraph{Verification interface.}
+Under the corresponding system-model step $M$, the verifier checks the following three conditions; free variables are implicitly universally quantified:
+\[
+\begin{array}{r@{\;\;\;\;}l}
+\textsc{Ok} & 
+\bigl(P(\ppol{\policy}{\args}) \land S(\sysstate) \Rightarrow \varphi(\sysstate',\ppol{\policy}{\args})\bigr)\\
+\textsc{Viol} & \bigl(P(\ppol{\policy}{\args}) \land \neg S(\sysstate) \Rightarrow \varphi(\sysstate',A(\sysstate,\ppol{\policy}{\args}))\bigr) \\[0.4em]
+\textsc{Global} & I(\sysstate,\ppol{\policy}{\args}) \Rightarrow \Phi(\sysstate,\ppol{\policy}{\args})
+\end{array}
+\]
+where $I$ is the conjunction of \textsc{OK} and $\textsc{Viol}$ for all guardrails.
+
+The \textsc{Ok} condition says that, when the deployed policy is one to which the guardrail applies and the current state already satisfies the state condition $S$, one system-model step must land in a runtime state satisfying the local guarantee $\varphi$. The \textsc{Viol} condition covers the complementary case: when the guardrail applies but the current state does not satisfy $S$, applying the corrective update $A$ and then taking one system-model step must still establish $\varphi$. Finally, \textsc{Global} says that if the conjunction $I$ of all local guarantees holds at a runtime state, then the system-wide assertion $\Phi$ must also hold there. Together, these three checks say that the local conditions are strong enough individually and sufficient collectively.
+
+\paragraph{Soundness.}
+If the initial runtime state satisfies $I$, if \textsc{Ok} and \textsc{Viol} hold for each guardrail under its chosen predicates $P$, $S$, $A$, and $\varphi$, and if \textsc{Global} holds, then every runtime state reachable under the guarded transition relation satisfies $\Phi$.
+In other words, the conjunction of the local guardrail guarantees is an inductive invariant for the outer transition system generated from the system model, and that invariant entails the global \perfsafety assertion.
+
+\fi

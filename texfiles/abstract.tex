@@ -1,2 +1,8 @@
 \begin{abstract}
+Operating System policies are becoming increasingly workload-dependent, where assumptions about workloads, application behavior, and hardware shape policy design. When these assumptions fail to hold in deployment, policies can silently degrade performance.
+Existing engineering practice relies on offline benchmarking, which is ill-suited to addressing deployment-time performance regressions and provides little insight for future policy iterations. 
+This paper argues that OSes need \emph{performance introspection}: the ability to monitor \emph{during execution} whether a policy is satisfying its performance requirements, and---crucially---to intervene when it is not.
+To this end we propose the abstraction of \emph{OS guardrails}, which pair (i) a runtime-checkable performance condition with (ii) a corrective action.
+We present principles for designing useful guardrails, a Guardrail Description Language (GDL) and semantics for specifying guardails over kernel-visible signals, an implementation substrate based on in-kernel monitors and eBPF, and a verification interface for verifying that local guardrail conditions (and their corrective actions) ensure system-wide performance objectives.
+We demonstrate the effectiveness of this approach through five case studies, showing that guardrails expose broken deployment-time assumptions, surface policy-specific failure modes, and enable targeted corrections or safer fallbacks.
 \end{abstract}

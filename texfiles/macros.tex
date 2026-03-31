@@ -9,26 +9,34 @@
 \newcommand{\decisions}{\mathcal{D}}
 \newcommand{\policies}{\Pi}
 \newcommand{\policy}{\pi}
-\newcommand{\states}{\mathcal{X}}
+\newcommand{\values}{\mathcal V}
+\newcommand{\argspace}{\mathcal A}
+\newcommand{\args}{a}
+\newcommand{\ppol}[2]{{#1}_{#2}}
+\newcommand{\ParametricPolicies}[2]{{#1}_{#2}}
+\newcommand{\states}{\mathcal S}
 \newcommand{\guardrails}{\mathcal{G}}
 \newcommand{\monitors}{\mathcal{M}}
 \newcommand{\enabledMap}{\Sigma}
-\newcommand{\transitions}{\tau}
+\newcommand{\transitions}{\to}
 \newcommand{\exec}[2]{\mathcal{E}(#1,#2)}
 \newcommand{\execwindow}[2]{\mathcal{E}_{\subset}(#1,#2)}
 \newcommand{\trigger}[1]{T_{#1}}
 \newcommand{\window}[1]{W_{#1}}
-\newcommand{\condition}[1]{\phi_{#1}}
+\newcommand{\property}[1]{P_{#1}}
 \newcommand{\action}[1]{A_{#1}}
-\newcommand{\actions}{\mathcal{A}}
-\newcommand{\runtimestate}[3]{\langle#1,#2,#3\rangle}
+\newcommand{\ActionSet}{\mathcal U}
+\newcommand{\actions}{\mathcal U}
+\newcommand{\runtimestate}[2]{\langle#1,#2\rangle}
 \newcommand{\lastk}[1]{\textsf{last}_{#1}}
 \newcommand{\nextk}[1]{\textsf{next}_{#1}}
 
 % Semantics
-\newcommand{\guard}[4]{#1\vdash#2,#3\Rightarrow#4}
+\newcommand{\sysstate}{\sigma}
+\newcommand{\guard}[4]{#1\models_#2 #3\rightarrow#4}
 \newcommand{\monitor}[4]{#1\vdash#2,#3\rightsquigarrow#4}
-\newcommand{\transition}[3]{#1\vdash#2\longrightarrow#3}
+\newcommand{\transition}[3]{#1\models#2\leadsto#3}
+
 
 % Custom listing
 \newtcblisting{dslbox}{
@@ -45,7 +53,7 @@
   bottom=2pt,
   listing options={
     language=GuardrailsDSL,
-    basicstyle=\ttfamily\small,
+    basicstyle=\ttfamily\small\linespread{0.8}\selectfont,
     columns=fullflexible,
     mathescape=true,
     keepspaces=true,

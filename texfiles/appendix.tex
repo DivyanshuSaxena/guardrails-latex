@@ -1,156 +1,218 @@
-\section{Full Semantics}
+% \section{Full Semantics}
 
-\newcommand{\s}{s}
-\newcommand{\Var}{\mathsf{Var}}
-\newcommand{\Val}{\mathsf{Value}}
-\newcommand{\States}{\mathcal S}
+% \newcommand{\s}{s}
+% \newcommand{\Var}{\mathsf{Var}}
+% \newcommand{\Val}{\mathsf{Value}}
+% \newcommand{\States}{\mathcal S}
 
-\newcommand{\Sys}{S}
-\newcommand{\SStep}[3]{{#1} \rightarrow^{#2} {#3}}
-\newcommand{\SStepN}[3]{{#1} \overset{#2}{\longrightarrow} {#3}}
-\newcommand{\SysNext}[3]{{#1}({#2},{#3})}
-\newcommand{\event}{e}
-\newcommand{\Events}{\mathcal{E}}
+% \newcommand{\Sys}{S}
+% \newcommand{\SStep}[3]{{#1} \rightarrow^{#2} {#3}}
+% \newcommand{\SStepN}[3]{{#1} \overset{#2}{\longrightarrow} {#3}}
+% \newcommand{\SysNext}[3]{{#1}({#2},{#3})}
+% \newcommand{\event}{e}
+% \newcommand{\Events}{\mathcal{E}}
 
-\newcommand{\gcond}{g}
-\newcommand{\gact}{a}
-\newcommand{\GSet}{\mathcal G}
+% \newcommand{\gcond}{g}
+% \newcommand{\gact}{a}
+% \newcommand{\GSet}{\mathcal G}
 
-\newcommand{\Bool}{\mathbf{2}}
-\newcommand{\True}{\mathbf{true}}
-\newcommand{\False}{\mathbf{false}}
+% \newcommand{\Bool}{\mathbf{2}}
+% \newcommand{\True}{\mathbf{true}}
+% \newcommand{\False}{\mathbf{false}}
 
-\newcommand{\trace}{\tau}
-\newcommand{\TExtend}[3]{{#1} \cdot {#2}{#3}}
-\newcommand{\TRestrict}[2]{#2_{[-{#1},\ldots]}}
-\newcommand{\Traces}{\mathcal T}
-\newcommand{\KTraces}[1]{\Traces_{#1}}
+% \newcommand{\trace}{\tau}
+% \newcommand{\TExtend}[3]{{#1} \cdot {#2}{#3}}
+% \newcommand{\TRestrict}[2]{#2_{[-{#1},\ldots]}}
+% \newcommand{\Traces}{\mathcal T}
+% \newcommand{\KTraces}[1]{\Traces_{#1}}
 
-% \newcommand{\GSys}[2]{\langle {#1}, {#2}\rangle}
-\newcommand{\GSys}[2]{{#1} \lhd {#2}}
+% % \newcommand{\GSys}[2]{\langle {#1}, {#2}\rangle}
+% \newcommand{\GSys}[2]{{#1} \lhd {#2}}
 
-\newcommand{\Monitor}[5]{\langle {#1}, {#2}, {#3} \rangle \leadsto \langle {#4}, {#5} \rangle}
-\newcommand{\MonitorFix}[5]{\langle {#1}, {#2}, {#3} \rangle \leadsto^* \langle {#4}, {#5} \rangle}
+% \newcommand{\Monitor}[5]{\langle {#1}, {#2}, {#3} \rangle \leadsto \langle {#4}, {#5} \rangle}
+% \newcommand{\MonitorFix}[5]{\langle {#1}, {#2}, {#3} \rangle \leadsto^* \langle {#4}, {#5} \rangle}
 
-\newcommand{\KGuardedStep}[7]{\ensuremath{{#2} \models_{#1} ({#3},{#4}) \rightsquigarrow^{#5} ({#6}, {#7}) }}
+% \newcommand{\KGuardedStep}[7]{\ensuremath{{#2} \models_{#1} ({#3},{#4}) \rightsquigarrow^{#5} ({#6}, {#7}) }}
 
-\newcommand{\SafetyK}[3]{{#2} \models_{#1} \square~{#3}}
+% \newcommand{\SafetyK}[3]{{#2} \models_{#1} \square~{#3}}
 
-\newcommand{\Inv}{\vartheta}
-\newcommand{\RepInv}{\Delta}
-\newcommand{\SystemModel}[3]{\Psi(#1,#2,#3)}
-\newcommand{\SystemModelAction}[3]{\Psi^*(#1,#2,#3)}
+% \newcommand{\Inv}{\vartheta}
+% \newcommand{\RepInv}{\Delta}
+% \newcommand{\SystemModel}[3]{\Psi(#1,#2,#3)}
+% \newcommand{\SystemModelAction}[3]{\Psi^*(#1,#2,#3)}
 
-A system state is a mapping from variables to values
-$\s : \Var \to \Val$. We write the set of states $\States$ A system $\Sys$ is a tuple $\langle \s_0, {\SStep{}{}{}} \rangle$ of an initial state $\s_0$ and a deterministic step relation $\SStep{\s}{\event}{\s'}$ that updates the state from $\s$ to $\s'$ corresponding to an event $\event \in \Events$ from some fixed set of events $\Events$. As shorthand we will write $\SysNext{\Sys}{\s}{\event}$ for the set of states $\s'$ s.t. $\SStep{\s}{\event}{\s'}$. We also define $\SStepN{\s}{\event_1\cdots\event_n}{\s'}$ as the lifting of ${\SStep{}{}{}}$ to sequences of events.
+% A system state is a mapping from variables to values
+% $\s : \Var \to \Val$. We write the set of states $\States$ A system $\Sys$ is a tuple $\langle \s_0, {\SStep{}{}{}} \rangle$ of an initial state $\s_0$ and a deterministic step relation $\SStep{\s}{\event}{\s'}$ that updates the state from $\s$ to $\s'$ corresponding to an event $\event \in \Events$ from some fixed set of events $\Events$. As shorthand we will write $\SysNext{\Sys}{\s}{\event}$ for the set of states $\s'$ s.t. $\SStep{\s}{\event}{\s'}$. We also define $\SStepN{\s}{\event_1\cdots\event_n}{\s'}$ as the lifting of ${\SStep{}{}{}}$ to sequences of events.
 
-A \emph{trace} is a (nonempty, infinite or finite) alternating sequence of states and events $\trace = \s_0\event_1\s_1\event_2\ldots \in \States \times (\Events \times \States)^*$. We write $\Traces$ for this set of traces. A trace $\trace = \s_0\event_1\s_1\event_2$ is valid for a system $S = \langle \s^*_0, \SStep{}{}{}\rangle$, if $\s_0 = \s^*_0$ and forall $i \geq 0$, $\SStep{\s_i}{\event_{i+1}}{\s_{i+1}}$. To extend a trace $\trace$ with an event-state pair $(\event, \s)$, write $\TExtend{\trace}{\event}{\s}$. To restrict a trace to only the most recent $k$ states, write $\TRestrict{k}{\trace}$.
+% A \emph{trace} is a (nonempty, infinite or finite) alternating sequence of states and events $\trace = \s_0\event_1\s_1\event_2\ldots \in \States \times (\Events \times \States)^*$. We write $\Traces$ for this set of traces. A trace $\trace = \s_0\event_1\s_1\event_2$ is valid for a system $S = \langle \s^*_0, \SStep{}{}{}\rangle$, if $\s_0 = \s^*_0$ and forall $i \geq 0$, $\SStep{\s_i}{\event_{i+1}}{\s_{i+1}}$. To extend a trace $\trace$ with an event-state pair $(\event, \s)$, write $\TExtend{\trace}{\event}{\s}$. To restrict a trace to only the most recent $k$ states, write $\TRestrict{k}{\trace}$.
 
-A \emph{guardrail} $G$ is a pair $\langle \gcond, \gact \rangle$ where $\gcond : \Traces \to \Bool$, where $\Bool = \{\True, \False\}$, which maps a trace to a decision, and an action $\gact \in \Events^*$ that is a sequence of events to trigger when $g$ is $\False$ for a particular state. Since we cannot keep a complete history, we will care about $k$-bounded guardrails, wherein $\gcond : \KTraces{k} \to \Bool$, where $\KTraces{k} = \bigcup_{i=0}^{k-1} \States \times (\Events \times \States)^{i-1}$ is the set of traces with no more than $k$ states.
-We use $\GSet$ to range over sets of guardrails.
+% A \emph{guardrail} $G$ is a pair $\langle \gcond, \gact \rangle$ where $\gcond : \Traces \to \Bool$, where $\Bool = \{\True, \False\}$, which maps a trace to a decision, and an action $\gact \in \Events^*$ that is a sequence of events to trigger when $g$ is $\False$ for a particular state. Since we cannot keep a complete history, we will care about $k$-bounded guardrails, wherein $\gcond : \KTraces{k} \to \Bool$, where $\KTraces{k} = \bigcup_{i=0}^{k-1} \States \times (\Events \times \States)^{i-1}$ is the set of traces with no more than $k$ states.
+% We use $\GSet$ to range over sets of guardrails.
 
-The semantics of guardrails are given below:
+% The semantics of guardrails are given below:
 
-\begin{mathpar}
-    \inferrule[Recover]{
-        G = \langle \gcond, a \rangle \in \GSet
-        \and
-        \gcond(\trace) = \False
-        \and
-        \SStepN{\s}{a}{\s'}
-    }{
-    \Monitor{\GSet}{\trace}{\s}{\s'}{\GSet \setminus \{G\}}
-    }
+% \begin{mathpar}
+%     \inferrule[Recover]{
+%         G = \langle \gcond, a \rangle \in \GSet
+%         \and
+%         \gcond(\trace) = \False
+%         \and
+%         \SStepN{\s}{a}{\s'}
+%     }{
+%     \Monitor{\GSet}{\trace}{\s}{\s'}{\GSet \setminus \{G\}}
+%     }
 
-    \inferrule[Ok]{
-        G = \langle \gcond, a \rangle \in \GSet
-        \and
-        \gcond(\trace) = \True
-    }{
-        \Monitor{\GSet}{\trace}{\s}{\s}{\GSet \setminus \{G\}}
-    }
-\end{mathpar}
-which can be lifted to the following
-\begin{mathpar}
-    \inferrule[Fix]{
-        \Monitor{\GSet}{\trace}{\s}{\s''}{\GSet''} \and
-        \MonitorFix{\GSet''}{\trace'}{\s''}{\s'}{\GSet'}
-    }{
-        \MonitorFix{\GSet}{\trace}{\s}{\s'}{\GSet'}
-    }
-\end{mathpar}
-
-
-
-A \emph{guardrailed system}, or \emph{guarded system}, is a pair $\GSys\Sys\GSet$, whose semantics are given below: 
+%     \inferrule[Ok]{
+%         G = \langle \gcond, a \rangle \in \GSet
+%         \and
+%         \gcond(\trace) = \True
+%     }{
+%         \Monitor{\GSet}{\trace}{\s}{\s}{\GSet \setminus \{G\}}
+%     }
+% \end{mathpar}
+% which can be lifted to the following
+% \begin{mathpar}
+%     \inferrule[Fix]{
+%         \Monitor{\GSet}{\trace}{\s}{\s''}{\GSet''} \and
+%         \MonitorFix{\GSet''}{\trace'}{\s''}{\s'}{\GSet'}
+%     }{
+%         \MonitorFix{\GSet}{\trace}{\s}{\s'}{\GSet'}
+%     }
+% \end{mathpar}
 
 
-\begin{mathpar}
 
-\inferrule[$k$-GuardedStep]{
-    \SStep{\s}{\event}{\s'} \and
-    \trace' = \TRestrict{k}{(\TExtend{\trace}{\event}{\s''})} \and
-    \MonitorFix{\GSet}{\trace}{\s'}{\s''}{\emptyset}{}
-} {
-    \KGuardedStep{k}{\GSet}{\trace}{\s}{\event}{\s''}{\trace'}{}
-}
-
-\end{mathpar}
+% A \emph{guardrailed system}, or \emph{guarded system}, is a pair $\GSys\Sys\GSet$, whose semantics are given below: 
 
 
-\section{Verification Conditions}
+% \begin{mathpar}
 
-Now we develop the verificcation conditions required to prove that a guarded system $\GSys\Sys\GSet$ satisfies a safety property $\varphi$ with a $k$-bounded history, written $\SafetyK{k}{\GSys{\Sys}{\GSet}}{\varphi}$. This holds iff there exists an invariant $\Inv \subseteq \States \times \KTraces{k}$ s.t. $\Inv(\s_0, \s_0)$, where $\s_0$ is the initial state of $\Sys$, $\Inv(\s, \trace) \Rightarrow \varphi(\s, \trace)$ and
-\[
-\textrm{if~} \Inv(\s,\trace),
-\textrm{~and~} \KGuardedStep{k}{\GSet}{\trace}{\s}{\event}{\s'}{\tau'} \textrm{~then~}
-    \Inv(\s',\trace')
-\]
+% \inferrule[$k$-GuardedStep]{
+%     \SStep{\s}{\event}{\s'} \and
+%     \trace' = \TRestrict{k}{(\TExtend{\trace}{\event}{\s''})} \and
+%     \MonitorFix{\GSet}{\trace}{\s'}{\s''}{\emptyset}{}
+% } {
+%     \KGuardedStep{k}{\GSet}{\trace}{\s}{\event}{\s''}{\trace'}{}
+% }
 
-To do this, we need (at a high level) to show that from every state $\s$, with trace $\trace$, running the event $e$, updating the trace, and then taking whatever corrective actions are necessary, maintains $\Inv$. Assume we have a relation $\SystemModel{\s}{\event}{\s'}$ that serves as an over-approximation of the step semantics of the system (that is $\SStep{\s}{\event}{\s'} \implies \SystemModel{\s}{\event}{\s'}$). We can extend this in the standard way to actions:
-\[
-\SystemModelAction{\s_0}{a}{s_n} \Leftrightarrow
-    \exists \s_1,\ldots, \s_{n-1}.~~
-    \SystemModel{\s_0}{\event_1}{\s_1} 
-    \wedge \cdots \wedge 
-    \SystemModel{\s_{n-1}}{\event_n}{\s_n}
-\]
-where $a = \event_1\cdots \event_n$. Then, for each guardrail, $G = \langle \gcond, \gact \rangle$ generate the following VC:
-\begin{align*}
-    &
-    (\s = \trace[0] \wedge
-    \Inv(\s, \trace) \wedge
-    \SystemModel{\s}{\event}{\s_0} \\
-    &
-    ~~\wedge \neg \gcond(\TExtend{\trace}{\event}{\s_0})
-    \\ &
-    ~~\wedge\SystemModelAction{\s_0}{\gact}{\s_n})
-    \\ &
-    \!\Rightarrow
-    \Inv(\s_n, \TExtend{\trace}{\event}{\s_n})
-\end{align*}
+% \end{mathpar}
 
-Then, we'll need to generate a similar VC for all subsets of $\GSet$, capturing which sets of guardrails might be triggered at each step. 
 
-One way to simplify this is to come up with a per-guardrail invariant $\RepInv_i$ for each guardrail $G_i \in \GSet$.
-Then, the following VCs suffice:
-\begin{align*}
-    &
-    \bigwedge_{G_i \in \GSet} \RepInv_i(\s_0,\s_0)
-    \\ 
-    & \left(\bigwedge_{i \neq j} \Delta_j(s,\tau) \right)
-    \wedge
-    \gcond_i(\TExtend{\trace}{\event}{\s}) \Rightarrow  \RepInv_i(\s, \trace) \\
-    &
-    \left(\bigwedge_{i \neq j} \Delta_j(s,\tau) \right)
-    \wedge
-    \neg \gcond_i(\TExtend{\trace}{\event}{\s_0}) 
-    \wedge \SystemModelAction{\s_{0}}{\gact}{\s_n})
-    \Rightarrow \RepInv_i(\s_n, \trace) \\
-\end{align*}
+% \section{Verification Conditions}
 
-Along with the following unifying condition:
-\[\left(\bigwedge_{G_i \in \GSet} \RepInv_i(\s, \trace) \right)
-\Rightarrow 
-\varphi(\s, \trace)\]
+% Now we develop the verificcation conditions required to prove that a guarded system $\GSys\Sys\GSet$ satisfies a safety property $\varphi$ with a $k$-bounded history, written $\SafetyK{k}{\GSys{\Sys}{\GSet}}{\varphi}$. This holds iff there exists an invariant $\Inv \subseteq \States \times \KTraces{k}$ s.t. $\Inv(\s_0, \s_0)$, where $\s_0$ is the initial state of $\Sys$, $\Inv(\s, \trace) \Rightarrow \varphi(\s, \trace)$ and
+% \[
+% \textrm{if~} \Inv(\s,\trace),
+% \textrm{~and~} \KGuardedStep{k}{\GSet}{\trace}{\s}{\event}{\s'}{\tau'} \textrm{~then~}
+%     \Inv(\s',\trace')
+% \]
 
+% To do this, we need (at a high level) to show that from every state $\s$, with trace $\trace$, running the event $e$, updating the trace, and then taking whatever corrective actions are necessary, maintains $\Inv$. Assume we have a relation $\SystemModel{\s}{\event}{\s'}$ that serves as an over-approximation of the step semantics of the system (that is $\SStep{\s}{\event}{\s'} \implies \SystemModel{\s}{\event}{\s'}$). We can extend this in the standard way to actions:
+% \[
+% \SystemModelAction{\s_0}{a}{s_n} \Leftrightarrow
+%     \exists \s_1,\ldots, \s_{n-1}.~~
+%     \SystemModel{\s_0}{\event_1}{\s_1} 
+%     \wedge \cdots \wedge 
+%     \SystemModel{\s_{n-1}}{\event_n}{\s_n}
+% \]
+% where $a = \event_1\cdots \event_n$. Then, for each guardrail, $G = \langle \gcond, \gact \rangle$ generate the following VC:
+% \begin{align*}
+%     &
+%     (\s = \trace[0] \wedge
+%     \Inv(\s, \trace) \wedge
+%     \SystemModel{\s}{\event}{\s_0} \\
+%     &
+%     ~~\wedge \neg \gcond(\TExtend{\trace}{\event}{\s_0})
+%     \\ &
+%     ~~\wedge\SystemModelAction{\s_0}{\gact}{\s_n})
+%     \\ &
+%     \!\Rightarrow
+%     \Inv(\s_n, \TExtend{\trace}{\event}{\s_n})
+% \end{align*}
+
+% Then, we'll need to generate a similar VC for all subsets of $\GSet$, capturing which sets of guardrails might be triggered at each step. 
+
+% One way to simplify this is to come up with a per-guardrail invariant $\RepInv_i$ for each guardrail $G_i \in \GSet$.
+% Then, the following VCs suffice:
+% \begin{align*}
+%     &
+%     \bigwedge_{G_i \in \GSet} \RepInv_i(\s_0,\s_0)
+%     \\ 
+%     & \left(\bigwedge_{i \neq j} \Delta_j(s,\tau) \right)
+%     \wedge
+%     \gcond_i(\TExtend{\trace}{\event}{\s}) \Rightarrow  \RepInv_i(\s, \trace) \\
+%     &
+%     \left(\bigwedge_{i \neq j} \Delta_j(s,\tau) \right)
+%     \wedge
+%     \neg \gcond_i(\TExtend{\trace}{\event}{\s_0}) 
+%     \wedge \SystemModelAction{\s_{0}}{\gact}{\s_n})
+%     \Rightarrow \RepInv_i(\s_n, \trace) \\
+% \end{align*}
+
+% Along with the following unifying condition:
+% \[\left(\bigwedge_{G_i \in \GSet} \RepInv_i(\s, \trace) \right)
+% \Rightarrow 
+% \varphi(\s, \trace)\]
+
+% \section{Old Semantics }
+
+% \paragraph{Runtime monitors for guardrails.}
+% In principle, guardrails as defined above apply to every system state $x$ that a system may observe.
+% However, there is a cost associated with evaluating the performance condition $\condition{g}$ -- maintaining the relevant summaries in the kernel state and reading them when evaluating the property imposes a computational as well as storage cost. 
+% Thus, in practice, the evaluation of guardrails must be restricted to a small set of `useful' points where the performance condition is likely to be violated.
+% Additionally, alternate policies for the same task may warrant different types of guardrails.
+% For example, a hugepage promotion policy based on offline cost-benefit profiling~\cite{cbmm-atc22} may require two guardrails: one for tracking whether the offline-profiled benefits are still accurate at run-time, and another for checking if the overall policy is resulting in useful promotions.
+% \sujay{I dont understand why we need the latter. If the former is correct, the latter is implied, right? If there was some stochasticity in the policy, then I agree, we would need both. But with CBMM, as it is, I don't think we need both.}
+% However, the default hugepage promotion policy will not require the former guardrail (as it does not use cost-benefit analysis).
+% Thus, we also need a mechanism to enable and disable the evaluation of guardrails in a live system.
+
+% \ds{This semantics misses event-driven triggers. For example, we have trigger type {\tt on_call}; one way to capture that is to record the relevant event summaries in the current state.}
+% Both of these requirements are met by runtime guardrail monitors.
+% Formally, a runtime monitor $M$ is a tuple $(G, \trigger{}, \enabledMap)$ where $G$ is the guardrail that $M$ is monitoring, $\trigger{}:\states\xrightarrow{}\{{\sf true},{\sf false}\}$ is a function that checks whether a given current system state meets the requirement for `triggering' the guardrail evaluation, and $\enabledMap:\policies\xrightarrow{}\{{\sf true},{\sf false}\}$ is a mapping from policies to a boolean that states whether the monitor $M$ should be enabled for the policy $\policy \in \policies$.
+% We write $\monitor{M}{x}{\policy}{\policy'}$ to denote that when a monitor $M$ observes the current system state $x$ for a system under policy $\policy$, the resulting outcome is the update of policy to $\policy'$. These semantics are defined as:
+% \begin{mathpar}
+% \inferrule[Not-Triggered]{ 
+%     % M=(G,\trigger{},\enabledMap) \quad
+%     \trigger{}(x)={\sf false}
+% }{
+%   \monitor{(G,\trigger{},\enabledMap)}{x}{\policy}{\policy}
+% }\quad
+% \inferrule[Not-Enabled]{
+%     % M=(G,\trigger{},\enabledMap) \quad
+%     \enabledMap(\policy)={\sf false}
+% }{
+%   \monitor{(G,\trigger{},\enabledMap)}{x}{\policy}{\policy}
+% }\\
+% \inferrule[Triggered]{
+%     % M=(G,\trigger{},\enabledMap) \quad
+%     \enabledMap(\policy)={\sf true} \quad
+%     \trigger{}(x)={\sf true} \quad
+%     \guard{G}{x}{\policy}{\policy'}
+% }{
+%   \monitor{(G,\trigger{},\enabledMap)}{x}{\policy}{\policy'}
+% }
+% \end{mathpar}
+
+% \paragraph{System transitions under guardrail monitors.}
+% With the semantics of guardrails and their monitors defined, we can now define the components \aditya{what is this referring to?} of a system under guardrails and develop semantics \aditya{why do these matter?} of how it operates when monitors are triggered. 
+% We denote a system $S$ using the tuple $(\states,\policies,\transitions,\monitors)$, where $\states$ and $\policies$ are as defined in the notations above.
+% $\transitions \subseteq \states \times \policies \times \states$ is a relation that determines the system transitions from one state to another given a particular policy, and $\monitors$ is the exhaustive set of monitors for guardrails for all policies in $\policies$ (note that some monitors in $\monitors$ may be disabled at any point in time).
+
+% We also define the runtime state for $S$ as $\runtimestate{x}{\pi}$, where $x \in \states$ is the current system state and $\pi$ is the currently deployed policy under evaluation.
+% Then the transition semantics for the system $S$ is given by the following rules: \aditya{explain the rules in english. as it stands, unclear why this section is interesting and why it matters}
+% \begin{mathpar}
+% \inferrule[Safe-Transition]{ 
+%     % S=(\states,\policies,\transitions,\monitors) \quad
+%     \forall m \in \monitors.\monitor{m}{x}{\policy}{\policy} \quad
+%     (x,\policy,x')\in\transitions
+% }{
+%   \transition{(\states,\policies,\transitions,\monitors)}{\runtimestate{x}{\policy}}{\runtimestate{x'}{\policy}}
+% }\\
+% \inferrule[Guarded-Transition]{
+%     % S=(\states,\policies,\transitions,\monitors) \quad
+%     \exists m \in \monitors.\monitor{m}{x}{\policy}{\policy'} \quad
+%     (x,\policy',x')\in\transitions
+% }{
+%   \transition{(\states,\policies,\transitions,\monitors)}{\runtimestate{x}{\policy}}{\runtimestate{x'}{\policy'}}
+% }
+% \end{mathpar}

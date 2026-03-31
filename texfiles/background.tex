@@ -1,10 +1,8 @@
 \section{Background and Related Work}\label{sec:background}
 
-\ds{This should be addressed here: why does this only apply to the OS? I guess it applies generally but we are instantiating only in the OS because it is a rich space of policies, has a bunch of issues today, and is much harder to reason about?}
-
 \subsection{Trends in Workload-specific OS Policies}
 Conventionally, OS policies have relied on broad, fairly stable assumptions: that workloads exhibit similar locality patterns, that hardware behavior can be summarized by a small set of predictable trends, and that performance tradeoffs profiled once will remain valid across deployments.
-While this single policy was still not optimal, it was optimal to use it for general-purpose applications \ds{why?}.
+% While this single policy was still not optimal, it was optimal to use it for general-purpose applications \ds{why?}.
 While such one-size-fits-all policies were rarely optimal for every application, they were a reasonable compromise for general-purpose systems, where broad applicability and robustness mattered more than per-workload optimality.
 However, recent trends suggest that these assumptions break down more often in modern environments, where applications have diverse requirements, and both workloads and hardware evolve rapidly over time.
 
@@ -24,7 +22,7 @@ The takeaway is not that LinnOS was wrong; rather, it is that even sophisticated
 
 \ds{Add the argument that this guardrail-style of policy development has been applied previously, but in an ad-hoc manner -- we provide a framework to do it in a principled way.}
 
-\sujay{We could add some examples motivating need for perf introspection. Why is it more important today than before? I can think of 2 reasons: 1) learned policies, understanding the behavior of which is more difficult, and 2) instance-optimal heuristics which may work well for one workload but perform poorly for another. We could add examples or some data for this.}
+% \sujay{We could add some examples motivating need for perf introspection. Why is it more important today than before? I can think of 2 reasons: 1) learned policies, understanding the behavior of which is more difficult, and 2) instance-optimal heuristics which may work well for one workload but perform poorly for another. We could add examples or some data for this.}
 
 
 \subsection{Related Work}

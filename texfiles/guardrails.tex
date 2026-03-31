@@ -8,61 +8,10 @@ We call this capability {\it \textbf{performance introspection}}.
 In this paper, we propose a framework that brings such run-time performance introspection capabilities to the OS.
 The key building blocks enabling this framework are {\it \textbf{OS Guardrails}}.
 
-\aditya{i don't like the specialization story.
-isn't any policy "specialized" by definition or design?
-also, note that beyond 3.0 there is no mention of specialization, so why bring it up in the first place
-just say that policies are brittle from a perf perspective because designers are forced to make assumptions about workloads, enviornments etc that easily break at deployment time or in production. thus we need a principled way of knowing when that's happening and taking appropriate actions.}
-\ds{Updated. PTAL.}
-
-
-\subsection{OS Guardrails}\label{subsec:guardrails-desc}
-
-An OS Guardrail (or guardrail, for simplicity) is a construct that evaluates whether the execution of an OS policy meets some target performance requirement.
-A guardrail captures two things: (i) a performance property that should hold for a policy or subsystem, and (ii) a corrective action to take when that property is violated.
-We provide an intuitive explanation here, and give a detailed formal definition in \Cref{sec:gdl}.
-
-\ds{Add a flow scheduling example here.}
-
-We use the term \emph{performance property} to denote a measurable \eric{safety?}predicate over policy execution in the OS.
-Depending on the policy, this predicate may be expressed over the policy’s inputs, its outputs, or the resulting system state.
-For instance, a hugepage allocator may target low allocation latencies (captured by execution time statistics); a network flow scheduler with a learned flow size predictor may require high prediction accuracy (captured by the immediate outputs of the predictor); and a memory tiering policy may require high DRAM bandwidth utilization (captured by system statistics that result from using the policy).
-These examples demonstrate the same underlying idea: the OS should be able to determine, from run-time evidence, whether the policy is operating in a desirable regime.
-
-Corrective actions similarly depend on the policy and the failure mode being guarded against.
-For instance, if a hugepage allocator takes too long, then the action may be to revert to the basepage allocator; if a predictor for flow sizes is resulting in inaccurate outputs, then the action may be to retrain the existing model; and if the memory tiering policy has low DRAM bandwidth utilization, then the action may be to promote pages more aggressively. \aditya{all of these are reactive actions. shouldn't we have proactive ones that deny an action}
-
-
-\subsection{Principles for Designing Useful Guardrails}\label{subsec:principles}
-
-\ds{A high-level question that I haven't answered head on is: why should guardrails be separate and not a part of the policy itself. Suggestions?}
-\eric{Can probably borrow some motivation from Aspect Oriented programming https://en.wikipedia.org/wiki/Aspect-oriented_programming}
-\sujay{As discussed, guardrails are more of an enhancement than a safeguard. We should mention this here or elsewhere.}
-Guardrails are as useful as the properties they monitor -- thus, designing good properties is key to building useful guardrails.
-We propose two principles for designing useful guardrails:
-\begin{densenumerate}
-\item Properties must be based on performance signals observable at run time within the OS.
-\item Properties should capture the absence of undesirable behavior rather than prescribe ideal behavior.
-\end{densenumerate}
-
-% There are two guidelines we propose to design good performance properties.
-To illustrate these principles and provide justification for them, we use transparent hugepage promotion (THP) as a running example.
-For a hugepage promotion policy, the goal is to decide which set of contiguous pages to promote into a hugepage and when. Hugepages help by reducing TLB miss rates and hence, save page walk cycles, but these savings must also be balanced against the overhead of allocating hugepages~\cite{cbmm-atc22}.
-A common method of specifying performance targets today is via tail-latency SLOs, as follows: `the 99th percentile execution time for any given workload when running the new policy should be at most 100 milliseconds'.
-
-However, a property on application tail-latency SLOs is difficult for the OS to evaluate: it requires application-visible metrics, that break the application-OS interface.
-\sujay{Instead, the guardrail should monitor the hugepage allocator latency to ensure its below a threshold.}
-More generally, a property is useful for run-time performance introspection only if the OS can evaluate it during execution.
-This restriction leads us to the first principle above.
-Note that this principle rules out performance specified using end-to-end objectives that require external measurement, or properties whose validation is inherently offline, such as eventual convergence guarantees or long-horizon notions of fairness.
-Such properties are still important, but they cannot serve as the basis for run-time performance introspection.
-
-The second problem with the SLO-based performance property is that the SLO thresholds must vary with the workloads.
-Thus, specifying a threshold for `ideal' performance is difficult. \aditya{this example is unclear. it is not obvious what ideal and bad means in this case and why one is difficult vs the other.}
-In contrast, it is often much easier to identify clearly undesirable behavior -- operators and OS policy developers can use their domain knowledge to express invariants such as `at least this behavior should not happen'. \aditya{this is an ill-formed phrase}
-This illustrates our second principle above. \aditya{inline these explanations with the principles. easier to follow and tighter.} \eric{I think an example would also make this easier to follow}
-
-Taking these guidelines into account, a more useful guardrail can then be designed by specifying poor behavior that should not occur in any THP policy.
-For example, if a THP policy repeatedly allocates hugepages that are never accessed, then the cycles spent in allocating them are necessarily wasted (and hence, a signal of poor policy performance).
+% \aditya{i don't like the specialization story.
+% isn't any policy "specialized" by definition or design?
+% also, note that beyond 3.0 there is no mention of specialization, so why bring it up in the first place just say that policies are brittle from a perf perspective because designers are forced to make assumptions about workloads, environments, etc. that easily break at deployment time or in production. thus we need a principled way of knowing when that's happening and taking appropriate actions.}
+% \ds{Updated. PTAL.}
 
 \begin{figure}
     \centering
@@ -71,21 +20,121 @@ For example, if a THP policy repeatedly allocates hugepages that are never acces
     \label{fig:framework-overview}
 \end{figure}
 
-\subsection{Workflow and Key Components}\label{subsec:framework}
+\subsection{Overview of OS Guardrails}\label{subsec:guardrails-desc}
 
-The above discussion shows that OS guardrails should be expressed as precise, executable specifications over OS-visible behavior.
-This, in turn, imposes certain requirements needed to support performance introspection in the OS: guardrails must be specified declaratively, compiled into efficient monitors, and integrated directly into the execution path of OS policies.
-We propose a framework that achieves these requirements. We explain this using the workflow depicted in~\Cref{fig:framework-overview}.
+An OS Guardrail (or just guardrail, for simplicity) is an abstraction that allows the system to determine whether the execution of an OS policy satisfies a target performance requirement.
+A guardrail captures two things: (i) a performance property that should hold for a policy or subsystem, and (ii) a corrective action to take when that property is violated.
+We illustrate the philosophy of guardrail-based performance introspection using the workflow depicted in~\Cref{fig:framework-overview}, and then derive principles for designing useful guardrails using two running examples.
 
-\aditya{the rest of this is good, but a bit verbose}
-For each specialized policy (or subsystem) of interest, our framework requires operators to specify the guardrails, consisting of desired performance properties and corresponding corrective actions.
-Today, there exists no mechanism for operators to specify the performance properties they require of the OS or the actions to take when the performance is poor.
-The central challenge is therefore to provide an intuitive yet expressive interface for operators, while remaining implementable using run-time statistics.
-Our framework addresses this challenge via the {\it \textbf{Guardrail Description Language (\lang)}}, a domain-specific language designed around typical OS abstractions such as kernel objects, kernel functions, and run-time statistics.
-To ensure that properties can be evaluated at run time with low overhead, \lang uses primitives that restrict performance properties to predicates over kernel-visible features that are observable during execution (e.g., per-object counters, latency measurements, and scheduling or memory-state signals).
+\paragraph{Workflow and Key Components.}
+% We propose a framework that allows declarative specification of guardrails and their desired performance properties, and integrates guardrails directly into the execution path of OS policies via efficient monitors.
+% Today, there exists no mechanism for operators to specify the performance properties they require of the OS or the actions to take when the performance is poor.
+For each policy (or subsystem) of interest, our framework requires operators to specify the guardrails, consisting of run-time monitorable performance properties and corresponding corrective actions ($\property{}$ and $\action{}$ in \Cref{fig:framework-overview}).
+This specification is done using the {\it \textbf{Guardrail Description Language (\lang)}}, a domain-specific language designed around primitives that make guardrail expression intuitive.
+% Specifically, the performance property must be expressed over the policy’s inputs, its outputs, or the resulting system state.
+% As we discuss in \Cref{subsec:property-principles}, this requirement is important for run-time performance introspection.
+% Corrective actions must be specified as choosing a new policy or parameters for existing policies.
+We describe the high-level principles for designing the guardrail performance properties and actions in \Cref{subsec:action-principles,subsec:property-principles}, and then build the primitives introduced by \lang in \Cref{sec:gdl}.
+% Thus, the central challenge is to provide an intuitive yet expressive interface for a wide variety of policies, while remaining implementable using run-time statistics.
+% To ensure that properties can be evaluated at run time with low overhead, \lang uses primitives that restrict performance properties to predicates over kernel-visible features that are observable during execution (e.g., per-object counters, latency measurements, and scheduling or memory-state signals).
+% \ds{Something about verification.}
 
-At run time, \lang guardrails are compiled into {\it \textbf{Guardrail Monitors}} that operate alongside the policy execution path, as depicted in Figure~\ref{fig:framework-overview}.
+Since guardrails only have runtime monitorable properties and actions, it is important to check whether these properties and actions meet some desirable high-level objective.
+To address this, our framework allows operators to specify, in addition to the guardrail, a high-level objective (\perfsafety in \Cref{fig:framework-overview}). 
+A verifier then checks, under an appropriate policy-system interaction model ($M$ in \Cref{fig:framework-overview}), whether the \perfsafety property is met when a guardrail (comprising property $\property{}$ and action $\action{}$) monitors the policy of interest (details in \cref{sec:verification}).
+This verification step is optional, but allows operators to evaluate if guardrails provably meet some high-level objective specified as \perfsafety.
+
+The verified (or unverifiable) \lang guardrails are compiled into {\it \textbf{Guardrail Monitors}} that operate alongside the policy execution path, as depicted in Figure~\ref{fig:framework-overview}.
 As inputs drive policy decisions and update system state, these monitors continuously evaluate the specified predicates over the resulting execution trace.
-In order to make the varied statistics, necessary for evaluating properties, readily available, we maintain an in-kernel feature store, as proposed previously in LAKE~\cite{lake-asplos23}.
+% In order to make the varied statistics necessary for evaluating properties, readily available, we maintain an in-kernel feature store, as proposed previously in LAKE~\cite{lake-asplos23}.
 We implement these monitors using \texttt{eBPF}, enabling efficient in-kernel execution, low deployment overhead, and dynamic updates to guardrail logic.
 When a predicate evaluates to false, the guardrail is said to be triggered, and this results in the execution of its prescribed corrective action, steering the policy back toward its intended operating regime.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.9\columnwidth]{figures/Examples/FLUX-example.pdf}
+    \caption{Guardrail for a flow size predictor policy, used by a network flow scheduler.}
+    \label{fig:flux-example}
+\end{figure}
+
+\paragraph{Two running examples.}
+The first example is the CBMM hugepage promotion policy, as depicted in \Cref{fig:intro-example}.
+% The goal of the policy is to decide which set of contiguous pages to promote into a hugepage and when. Hugepages help by reducing TLB miss rates and hence, save page walk cycles, but these savings must also be balanced against the overhead of allocating hugepages~\cite{cbmm-atc22}.
+Since CBMM estimates the benefit of promoting a hugepage to make a decision, a guardrail $G$ may express the performance property, $\property{}$, that the estimated benefits should be accurate. Evaluating this property requires capturing the resulting system state after a hugepage promotion decision. 
+Accordingly, if the property is not met, the corrective action, $\action{}$ can be to update the benefit estimates based on the accesses seen by various hugepages.
+Then, under appropriate assumptions made by the system model, one can verify the \perfsafety property that any update made by the guardrail $G$ only improves the benefit estimates.
+
+As another example, consider the flow size predictor policy in \Cref{fig:flux-example}, where a neural network is used to predict the size of a new flow, and the prediction is used to classify flows into small or large flows and perform a priority-based scheduling.
+A guardrail $G$ may specify the property, $\property{}$, that a neural network model should only be used if the features corresponding to a new flow are in-distribution for its training data set.
+In this case, if the input is found to be out-of-distribution, one can design a proactive corrective action, $\action{}$, to choose a neural network trained on another dataset, where the input features are in-distribution.
+Similar to the previous example, one can then verify if the guardrail $G$ leads to overall good predictions, under a given system model.
+\aditya{all of these are reactive actions. shouldn't we have proactive ones that deny an action}\ds{The change of the neural network is a proactive example now.}
+
+A natural takeaway from these examples is that guardrails shift the burden of policy evaluation from offline experimentation to the design of good performance properties, choosing appropriate corrective actions, and building reasonable system models to verify \perfsafety conditions.
+\ds{@Eric, please check the following statement.}
+This shift is intentional: devising runtime properties is often easier than designing policies that meet them; also, this process decomposes the verification problem into designing workload-specific policies that meet \perfsafety under model assumptions, and verifying that the corrective action maintains \perfsafety. 
+% Next, we distill the principles we have found useful for designing good guardrails (\Cref{subsec:property-principles,subsec:action-principles}).
+
+
+\subsection{Principles for Useful Performance Properties}
+\label{subsec:property-principles}
+
+% Performance introspection is only useful if the run-time monitored properties faithfully capture whether a policy is meeting its intended performance goals.
+Using the two running examples, we describe three principles that we found useful in our experience for designing performance properties.
+
+\medskip\noindent
+{\em \textbf{1.} Properties must be based on performance signals observable at run time within the OS.}
+A common method of specifying performance targets today is via tail-latency SLOs.
+For CBMM (\Cref{fig:intro-example}), for example, one might specify that the 99th-percentile execution time of a workload should remain below 500 ms.
+However, such a property is hard for the OS to evaluate at run time, since it depends on application-visible metrics and thus breaks the application–OS interface.
+On the other hand, an OS guardrail can monitor the hugepage allocator latencies.
+A more suitable specification, therefore, is that the average or tail latency of kernel functions responsible for hugepage allocation should stay below a threshold.
+More generally, a property is useful for run-time performance introspection only if the OS can evaluate it during execution.
+
+\medskip\noindent
+{\em \textbf{2.} Properties should be workload-agnostic.}
+The SLO-based property above has a limitation that the SLO thresholds must be workload-dependent -- hugepage allocation latencies can vary with the memory footprint or the fragmentation created by a workload.
+This conflicts with the goal of run-time performance introspection, which is to detect if assumptions made by workload-specific policies lead to degradations.
+Instead, properties must be designed to capture workload-agnostic behavior.
+In CBMM, for instance, \Cref{fig:intro-example} shows such workload-agnostic behavior: that the estimated benefits should match the observed benefits, regardless of workload or fragmentation.
+Note that this does not preclude guardrails from having any parameters, but those should encode general notions of acceptable behavior rather than workload-specific tuning knobs.
+% \ds{Parameters are fine as long as they are workload-agnostic.}
+
+\medskip\noindent
+{\em \textbf{3.} Properties should capture detection of bad behavior rather than evaluating proximity to optimal.}
+Taking the example of the learned flow size predictor (\Cref{fig:flux-example}), a property may state that `the predictor should have an error of at most 10\% from the ground truth.'
+But such a property does not necessarily capture useful behavior: for a 100-byte flow, a 10\% error may still lead to the same classification and scheduling decision.
+A better property would specify the relevant behavioral outcome directly, e.g., that small flows are classified as small and large flows as large.
+More generally, properties stated in terms of distance from an optimal or true value are often difficult to use: the optimum may be impractical to compute, and acceptable error bounds are often hard to determine.
+Put simply, OS properties should answer the question `is the policy causing necessarily bad behavior?' rather than `whether it is producing optimal decisions?'
+
+% \ds{Any other principles that make sense here?}
+
+Note that the above principles rule out performance specified using end-to-end objectives that require external measurement, or properties whose validation is inherently offline, such as eventual convergence guarantees or long-horizon notions of fairness.
+Such properties are still important, but they cannot serve as the basis for run-time performance introspection.
+
+% \ds{A high-level question that I haven't answered head on is: why should guardrails be separate and not a part of the policy itself. Suggestions?}
+% \eric{Can probably borrow some motivation from Aspect Oriented programming https://en.wikipedia.org/wiki/Aspect-oriented_programming}
+% \sujay{As discussed, guardrails are more of an enhancement than a safeguard. We should mention this here or elsewhere.}
+
+% \sujay{Three more properties: (1) guardrails should be simple for low overhead: we shouldn't implement guardrails that do sophisticated stuff like analyze traces. Rather, guardrails should do stuff like compare against thresholds. (2) guardrails should be workload-agnostic: guardrails shouldn't be written for specific workloads, they should work in all settings (that's the whole point for perf monitoring). (3) guardrails are independent of one another}
+
+\subsection{Principles for Choosing Corrective Actions}
+\label{subsec:action-principles}
+
+The choice of corrective action is crucial in maintaining the desired performance properties. Additionally, since these actions must be taken at run-time whenever the guardrail property is violated, it requires the actions to meet important characteristics, as described below:
+
+\medskip\noindent
+{\em \textbf{1.} Actions should require no downtime.}
+Since guardrails operate at run time, their corrective actions must also be applicable at run time.
+An action is far less useful if enforcing it requires rebuilding the kernel, rebooting the machine, or retraining some model.
+% Thus, actions that change values of various flags in the Linux kernel that require rebuilding the kernel, e.g., the MAX MEMORY BANDWIDTH FOR NUMA MIGRATION flag, are not permitted.
+If an action requires a control point that is not already exposed by the kernel, we require developers to install a kernel module or eBPF-based control path, and then the guardrail action can be to simply update that live control state. This keeps the action compatible with continuous operation.
+
+\medskip\noindent
+{\em \textbf{2.} Actions should have low execution overhead.}
+Since guardrails properties are checked at run time, and actions are taken whenever the property is violated, it is important that actions themselves do not become a source of overhead.
+For instance, when the CBMM policy in \Cref{fig:intro-example} fails to meet the guardrail property, a corrective action may require computation of the average access frequency using the entire execution history of the workload.
+But this would require scanning all past access records each time the guardrail fires, making the action increasingly expensive over time. A better action is to compute the average only over a small recent history, such as the last ten windows.
+
+\ds{Mention here that the final outcome is that actions allow either changing of pre-installed policies or choosing parameters for those policies.}
