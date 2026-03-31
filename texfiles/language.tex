@@ -61,7 +61,7 @@ Such properties are not tied to specific state transitions and are best checked 
 \lang captures this with the {\sf periodic}$(d)$ trigger, which fires every $d$ seconds.
 For example, the {\tt CompactionOverhead} guardrail from \Cref{subsec:compaction-case-study} uses a 10-second periodic trigger to check whether the average execution time of {\tt compact\_zone()} has grown excessive:
 
-\begin{dslbox}
+\begin{dslbox}[title={Guardrail~\theguardcount: CompactionOverhead}, glabel=lst:compaction-overhead]
 for THPAlways
 when periodic(10s)
 check $\forall e \in$ compact_zone() avg(exec_time(e)) < 10ms
@@ -73,7 +73,7 @@ For such properties, the natural evaluation point is the moment the decision is 
 \lang captures this with the {\sf on\_call}$(f)$ trigger, which fires on each call to \textsf{KFunc} $f$.
 For example, the {\tt InDistributionShort} guardrail from \Cref{subsec:flux-case-study} fires on each call to {\tt flow\_start} and checks whether the input features lie within the training distribution of the active predictor:
 
-\begin{dslbox}
+\begin{dslbox}[title={Guardrail~\theguardcount: InDistributionShort}, glabel=lst:in-dist-short]
 for FLUXShortPredictor
 when on_call(flow_start)
 check $agg\_net \sim$ read(ShortDist[agg_net]) $\wedge$

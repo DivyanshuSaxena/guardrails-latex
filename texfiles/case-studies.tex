@@ -19,7 +19,7 @@ Thus, the estimated benefits may be incorrect for real-time conditions.
 Ideally, the benefit of a hugepage promotion should be the number of CPU cycles it can save before it is demoted back to a set of base pages.
 The number of CPU cycles saved, in turn, is proportional to the number of accesses made to the page region.
 With this intuition, we design the following {\tt BenefitCorrection} guardrail to check if the benefits between two page regions follow the same relationship as the number of accesses to them. \ds{Need to find out $expr$ based on experiments.}
-\begin{dslbox}
+\begin{dslbox}[title={Guardrail~\theguardcount: BenefitCorrection}, glabel=lst:benefit-correction]
 for CBMM
 when periodic(2s)
 check $\forall P_i,P_j \in Set[{\sf Page}]$ (
@@ -62,7 +62,7 @@ While compaction improves allocation success rates and reduces fragmentation, it
 In particular, this memory pressure is elevated when hugepage allocation is enabled because of memory bloat~\cite{cbmm-atc22}. \ds{Any other cites?}
 Thus, we design a combination of two guardrails specifically when transparent hugepage promotion is active.
 The first is a guardrail that checks if the cost of running compaction is bounded by a threshold and if not, it temporarily switches off hugepages. The second guardrail restores hugepage allocations after waiting for a fixed duration. In \lang syntax, these guardrails are described as:  
-\begin{dslbox}
+\begin{dslbox}[title={Guardrail~\theguardcount: CompactionOverhead \& RestoreTHP}, glabel=lst:compaction-restore]
 for THPAlways
 when periodic(10s)
 check $\forall e \in$ compact_zone() avg(exec_time(e)) < 10ms
@@ -109,7 +109,7 @@ We deploy these trained neural networks via a combined kernel- and user-space pi
 \paragraph{In-distribution check guardrail.}
 To achieve good predictions, we must use the correct models depending on whether the features for a new flow are in-distribution or not. 
 Thus, we explore the usage of a guardrail to use the correct specialized prediction model based on whether the input features of a new flow are in-distribution.
-\begin{dslbox}
+\begin{dslbox}[title={Guardrail~\theguardcount: InDistributionShort \& InDistributionLong}, glabel=lst:in-dist]
 for FLUXShortPredictor
 when on_call(flow_start)
 check $agg\_net \sim$ read(ShortDist[agg_net]) $\wedge$
@@ -134,7 +134,7 @@ Note that in the case when an input feature is out of distribution for either mo
 Even after an input is in distribution for a prediction model, if the training did not complete properly, it can still lead to incorrect outputs.
 Thus, besides a check on the inputs to the predictor, we must also evaluate the decision quality post-facto.
 In this case study, this is feasible because the ground-truth for the flow sizes will be available when the flow ends. At that point, we can check if the predicted sizes were correct or not. We enforce this via the following guardrail:
-\begin{dslbox}
+\begin{dslbox}[title={Guardrail~\theguardcount: FLUXDecisionQuality}, glabel=lst:flux-decision]
 for FLUXShortPredictor, FLUXLongPredictor
 when periodic(30s)
 check avg(
