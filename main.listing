@@ -1,0 +1,10 @@
+guardrail FLUXDecisionQuality {
+  for FLUXShortPredictor, FLUXLongPredictor
+  when periodic(30s)
+  over last$_{30}$
+  check avg(
+        Decision[arg(flow_end, flow_id)]) -
+        FlowSize[arg(flow_end, flow_id)])
+    ) < 10%
+  on_failure Set(flow_scheduler, Default)
+}
