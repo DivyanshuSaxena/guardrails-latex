@@ -49,7 +49,7 @@ The semantics are:
 
 \paragraph{Guarded-system semantics.}
 We now define the overall system semantics induced by a single guardrail $G$.
-Let a system be given by the tuple $(\states,\policies,\transitions)$, where $\states$ and $\policies$ are defined as above, and $\transitions$ is the transition relation for the system $S$: $\sysstate, \policy \transitions \sysstate'$ indicates that the system steps from $\sysstate$ to $\sysstate'$ under policy $\policy$.
+Let a system be given by the tuple $(\states,\policies,\transitions)$, where $\states$ and $\policies$ are defined as above, and $\transitions$ is the transition relation for the system. $\sysstate, \policy \transitions \sysstate'$ indicates that the system steps from $\sysstate$ to $\sysstate'$ under policy $\policy$.
 The guarded system is then, an extension of $S$, where at each step, it first checks whether the guardrail is violated and repairs the deployed parameterized policy if needed.
 This is captured by the rule:
 \begin{mathpar}
@@ -62,10 +62,6 @@ This is captured by the rule:
 \end{mathpar}
 Informally, the above rule implies the following guarded system semantics: detect whether the current state violates the guardrail for the currently deployed policy, repair the deployed parameterized policy if needed, and then take the next system step under the resulting policy. The semantics of multiple guardrails can be defined similarly by applying the above rule for each guardrail in some fixed order.
 
-The operational semantics above define what guardrails do concretely on the real system transition relation $\transitions$.
-The verification framework below reasons instead over an abstract model $M$ that over-approximates $\transitions$: any transition possible under $\transitions$ is also possible under $M$, but $M$ may permit additional transitions that simplify the proof.
-This separation is what makes verification tractable; the soundness guarantee then transfers back to the concrete system because every real execution is an $M$-execution.
-
 
 \subsection{Formal Verification of Performance Properties}
 \label{subsec:verification-conditions}
@@ -74,29 +70,34 @@ This separation is what makes verification tractable; the soundness guarantee th
 % we can verify them just like any other safety properties.
 % Though we require an abstraction of the system, and a way to represent actions.
 
+\ds{Rephrased below.}
 The \textsc{Guarded-Transition} rule above induces a transition system over runtime states.
 The verification question is whether the local guarantees attached to the guardrails are strong enough to characterize safe states of this transition system, and whether those local guarantees for multiple guardrails together imply the desired \perfsafety property.
-The guardrail components $P$, $\property{G}$, and $\action{G}$ are already defined in \Cref{subsec:semantics}.
+% Our verification framework below reasons over an abstract model $M$ that over-approximates $\transitions$: any transition possible under $\transitions$ is also possible under $M$, but $M$ may permit additional transitions that simplify the proof.
+
+The guardrail components $\property{G}$, $\action{G}$, and $\policies_G$ are already defined in \Cref{subsec:semantics}.
 The verification framework introduces two additional predicates per guardrail: a \emph{local guarantee} $\varphi(\sysstate,\ppol{\policy}{\args})$, which characterizes the per-step invariant that the guardrail is responsible for maintaining, and a \emph{global \perfsafety assertion} $\Phi(\sysstate,\ppol{\policy}{\args})$, which is the high-level objective to be established.
-It also uses an abstract model $M(\sysstate,\ppol{\policy}{\args},\sysstate')$ in place of the concrete transition relation $\transitions$; $M$ over-approximates $\transitions$ so that verification is tractable, and the resulting guarantees carry back to the concrete system.
+It uses an abstract model $M(\sysstate,\ppol{\policy}{\args},\sysstate')$ in place of the concrete transition relation $\transitions$; $M$ overapproximates $\transitions$ so any transition possible under $\transitions$ is also possible under $M$, but $M$ may permit additional transitions that simplify the proof.
 
 \paragraph{Verification conditions.}
-The verifier checks the following three conditions; free variables are implicitly universally quantified:
+For any transition $\sysstate, \policy \transitions \sysstate'$ under guardrail $G$, the verifier checks the following three conditions \ds{Should these conditions also include $M$ somehow?}:
 \[
 \begin{array}{r@{\;\;\;\;}l}
 \textsc{Ok} & 
-\bigl(M(\sysstate,\ppol{\policy}{\args},\sysstate') \land P(\ppol{\policy}{\args}) \land \property{G}(\sysstate) \Rightarrow \varphi(\sysstate',\ppol{\policy}{\args})\bigr)\\
-\textsc{Viol} & \bigl(M(\sysstate,\ppol{\policy}{\args},\sysstate') \land P(\ppol{\policy}{\args}) \land \neg\property{G}(\sysstate) \Rightarrow \varphi(\sysstate',\action{G}(\sysstate,\ppol{\policy}{\args}))\bigr) \\[0.4em]
+\bigl( (\ppol{\policy}{\args} \in \policies_G) \land \property{G}(\sysstate) \Rightarrow \varphi(\sysstate',\ppol{\policy}{\args})\bigr)\\
+\textsc{Viol} & \bigl((\ppol{\policy}{\args} \in \policies_G) \land \neg\property{G}(\sysstate) \Rightarrow \varphi(\sysstate',\action{G}(\sysstate,\ppol{\policy}{\args}))\bigr) \\[0.4em]
 \textsc{Global} & I(\sysstate,\ppol{\policy}{\args}) \Rightarrow \Phi(\sysstate,\ppol{\policy}{\args})
 \end{array}
 \]
 where $I$ is the conjunction of \textsc{Ok} and \textsc{Viol} for all guardrails.
 
-The \textsc{Ok} condition says that, when the deployed policy is one to which the guardrail applies ($P$) and the current state already satisfies the guardrail property $\property{G}$, one model step must land in a runtime state satisfying the local guarantee $\varphi$. The \textsc{Viol} condition covers the complementary case: when the guardrail applies but $\property{G}$ does not hold, applying the corrective action $\action{G}$ and then taking one model step must still establish $\varphi$. Finally, \textsc{Global} says that if the conjunction $I$ of all local guarantees holds at a runtime state, then the system-wide assertion $\Phi$ must also hold there. Together, these three checks say that the local conditions are strong enough individually and sufficient collectively.
+The \textsc{Ok} condition says that, when the deployed policy is one to which the guardrail applies (checked via the predicate $\ppol{\policy}{\args} \in \policies_G$) and the current state already satisfies the guardrail property $\property{G}$, we must land in a runtime state $\sysstate'$ satisfying the local guarantee $\varphi$.
+The \textsc{Viol} condition covers the complementary case: when the guardrail applies but $\property{G}$ does not hold, the resulting state after applying the corrective action $\action{G}$ must still establish $\varphi$.
+Finally, \textsc{Global} says that if the conjunction $I$ of all local guarantees holds at a runtime state, then the system-wide assertion $\Phi$ must also hold there. Together, these three checks say that the local conditions are strong enough individually and sufficient collectively.
 
 \paragraph{Soundness.}
 If the initial runtime state satisfies $I$, if \textsc{Ok} and \textsc{Viol} hold for each guardrail under its model $M$ and chosen $\varphi$, and if \textsc{Global} holds, then every runtime state reachable under the guarded transition relation satisfies $\Phi$.
-In other words, the conjunction of the local guardrail guarantees is an inductive invariant for the outer transition system generated from the system model, and that invariant entails the global \perfsafety assertion.
+In other words, the conjunction of the local guardrail guarantees is an inductive invariant for the transition system generated from the system model $M$ and that invariant entails the global \perfsafety assertion.
 
 
 \iffalse

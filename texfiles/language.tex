@@ -1,11 +1,10 @@
 \section{\lang: Guardrail Description Language}\label{sec:gdl}
 
 We present the \emph{Guardrails Description Language} (GDL), a declarative language for specifying performance guardrails over kernel behavior.
-%\Cref{subsec:guardrails-desc} provided an informal description of what a guardrail consists of. We make the definition concrete here -- 
-Concretely, a guardrail specifies: (i) \emph{when} it is evaluated, (ii) \emph{what condition} must hold on the portion of execution it inspects, and (iii) \emph{what corrective action} is applied when that condition fails.
+As discussed in \Cref{subsec:semantics}, a guardrail specifies: (i) \emph{what condition} must hold on the portion of execution it inspects, and (ii) \emph{what corrective action} is applied when that condition fails.
 In this section, we first formally define this construct and its semantics (\Cref{subsec:formal-guardrails}), then describe the primitives \lang introduces to make guardrail specification intuitive (\Cref{subsec:gdl-syntax}). Finally, we show how the \lang primitives help verify that guardrails lead to high-level performance satisfaction (\Cref{subsec:formal-basis}). \ds{Need to revisit the last statement.} 
 
-\subsection{\lang Syntax, Grammar, and Primitives}\label{subsec:gdl-syntax}
+\subsection{\lang Primitives and Syntax}
 
 % \input{texfiles/grammar}
 
@@ -67,7 +66,8 @@ Rather than encoding arbitrary recovery logic in the DSL, \lang uses these actio
 
 \todo{Explain how the {\tt for} keyword defines the set of policies to which a guardrail applies.}
 
-\subsection{The \noregression Property}\label{subsec:formal-basis}
 
-\ds{WIP: This section should say something about what kind of guarantees we can provide in each case study. Current thought: for a given property and action, when the guardrail is triggered, we can verify whether the action will result in performance degradation or not. Thus, guardrails not only provide runtime mechanisms for performance improvements, but also an easy modular way of verifying "no regression".}
-\ds{More thoughts: is the non degradation property naturally extensible from the guardrail property? That is, given a guardrail property $g$, can I construct what the non-degradation property ought to be, and verify it?}
+% \subsection{The \noregression Property}\label{subsec:formal-basis}
+
+% \ds{WIP: This section should say something about what kind of guarantees we can provide in each case study. Current thought: for a given property and action, when the guardrail is triggered, we can verify whether the action will result in performance degradation or not. Thus, guardrails not only provide runtime mechanisms for performance improvements, but also an easy modular way of verifying "no regression".}
+% \ds{More thoughts: is the non degradation property naturally extensible from the guardrail property? That is, given a guardrail property $g$, can I construct what the non-degradation property ought to be, and verify it?}
