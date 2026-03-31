@@ -73,20 +73,21 @@ Informally, the above rule implies the following guarded system semantics: detec
 % Though we require an abstraction of the system, and a way to represent actions.
 
 The \textsc{Guarded-Transition} rule above induces a transition system over runtime states.
-The verification question is whether the local guarantees attached to the guardrails are strong enough to characterize safe states of this transition system, and whether those local guarantees for multiple guardrails together imply the desired \perfsafety property.
+The verification question is whether the local guarantees attached to the guardrails are sufficient to characterize safe states of this transition system, and whether those local guarantees across multiple guardrails together imply the desired \perfsafety property.
+
 For this purpose, we summarize a fixed guardrail using the following symbolic interface:
 \[
 \begin{array}{r@{\;\;:\;\;}l}
 M(\sysstate,\ppol{\policy}{\args},\sysstate') & \text{policy-system interaction model} \\[0.2em]
-P(\ppol{\policy}{\args}) & \text{policy applicability predicate} \\[0.2em]
+\ppol{\policy}{\args} \in \policies_G & \text{policy applicability predicate} \\[0.2em]
 \property{G}(\sysstate) & \text{guardrail property} \\[0.2em]
-A(\sysstate,\ppol{\policy}{\args}) & \text{corrective policy update} \\[0.2em]
+\action{G}(\sysstate,\ppol{\policy}{\args}) & \text{corrective policy update} \\[0.2em]
 \varphi(\sysstate,\ppol{\policy}{\args}) & \text{local guarantee} \\[0.2em]
 \Phi(\sysstate,\ppol{\policy}{\args}) & \text{global \perfsafety assertion}
 \end{array}
 \]
-Here $M$ is simply the system transition relation $\transitions$ from \Cref{subsec:formal-guardrails}, written as a predicate.
-Likewise, $P$, $S$, $A$, and $\varphi$ are the symbolic views of one guardrail's applicability condition, state condition, corrective action, and local guarantee.
+Here $M$ is simply the system transition step relation derived from $\transitions$ introduced above, written as a predicate.
+$\varphi$ and $\Phi$ are the symbolic views of the local guarantee that the guardrail must satisfy, and the \perfsafety property that must be met over multiple guardrails.
 
 \paragraph{Verification interface.}
 Under the corresponding system-model step $M$, the verifier checks the following three conditions; free variables are implicitly universally quantified:
