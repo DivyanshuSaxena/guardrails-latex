@@ -20,16 +20,13 @@ Ideally, the benefit of a hugepage promotion should be the number of CPU cycles 
 The number of CPU cycles saved, in turn, is proportional to the number of accesses made to the page region.
 With this intuition, we design the following {\tt BenefitCorrection} guardrail to check if the benefits between two page regions follow the same relationship as the number of accesses to them. \ds{Need to find out $expr$ based on experiments.}
 \begin{dslbox}
-guardrail BenefitCorrection {
-  for CBMM
-  when periodic(2s)
-  over last$_2$
-  check $\forall P_i,P_j \in Set[{\sf Page}]$ (
-        accesses($P_i$) > accesses($P_j$)
-        $\implies$read(Benefit[$P_i$]) > read(Benefit[$P_j$])
-    )
-  on_failure $\forall P_i\in Set[{\sf Page}]$ Set$(\Delta{\sf benefit}[P_i], expr)$
-}
+for CBMM
+when periodic(2s)
+check $\forall P_i,P_j \in Set[{\sf Page}]$ (
+      accesses($P_i$) > accesses($P_j$)
+      $\implies$read(Benefit[$P_i$]) > read(Benefit[$P_j$])
+  )
+action $\forall P_i\in Set[{\sf Page}]$ Set$(\Delta{\sf benefit}[P_i], expr)$
 \end{dslbox}
 The above guardrail uses several primitives introduced in \Cref{fig:gdl-grammar}.
 $P_i$ and $P_j$ are page regions (and hence, of the type $Set[{\sf Page}]$).
@@ -66,19 +63,15 @@ In particular, this memory pressure is elevated when hugepage allocation is enab
 Thus, we design a combination of two guardrails specifically when transparent hugepage promotion is active.
 The first is a guardrail that checks if the cost of running compaction is bounded by a threshold and if not, it temporarily switches off hugepages. The second guardrail restores hugepage allocations after waiting for a fixed duration. In \lang syntax, these guardrails are described as:  
 \begin{dslbox}
-guardrail CompactionOverhead {
-  for THPAlways
-  when periodic(10s)
-  over last$_{10}$
-  check $\forall e \in$ compact_zone() avg(exec_time(e)) < 10ms
-  on_failure Set(thp_policy, THPNever)
-}
-guardrail RestoreTHP {
-  for THPNever
-  when periodic(10s)
-  check True
-  on_failure Set(thp_policy, THPAlways)
-}
+for THPAlways
+when periodic(10s)
+check $\forall e \in$ compact_zone() avg(exec_time(e)) < 10ms
+action Set(thp_policy, THPNever)
+
+for THPNever
+when periodic(10s)
+check True
+action Set(thp_policy, THPAlways)
 \end{dslbox}
 
 % \ds{We probably need to add some syntax for guardrails to check if other guardrails are installed -- e.g., RestoreTHP by itself should not be triggered.}
@@ -117,22 +110,19 @@ We deploy these trained neural networks via a combined kernel- and user-space pi
 To achieve good predictions, we must use the correct models depending on whether the features for a new flow are in-distribution or not. 
 Thus, we explore the usage of a guardrail to use the correct specialized prediction model based on whether the input features of a new flow are in-distribution.
 \begin{dslbox}
-guardrail InDistributionShort {
-  for FLUXShortPredictor
-  when on_call(flow_start)
-  check $agg\_net \sim$ read(ShortDist[agg_net]) $\wedge$
-        $cpu \sim$ read(ShortDist[cpu]) $\wedge$
-        $ram \sim$ read(ShortDist[ram]) $\wedge\ \dots$
-  on_failure Set(flux_policy, FLUXLongPredictor)
-}
-guardrail InDistributionLong {
-  for ${\sf FLUXLongPredictor}$
-  when on_call(${\sf flow\_start}$)
-  check $agg\_net \sim$ read(LongDist[agg_net]) $\wedge$
-        $cpu \sim$ read(LongDist[cpu]) $\wedge$
-        $ram \sim$ read(LongDist[ram]) $\wedge\ \dots$
-  on_failure Set(flux_policy, FLUXShortPredictor)
-}
+for FLUXShortPredictor
+when on_call(flow_start)
+check $agg\_net \sim$ read(ShortDist[agg_net]) $\wedge$
+      $cpu \sim$ read(ShortDist[cpu]) $\wedge$
+      $ram \sim$ read(ShortDist[ram]) $\wedge\ \dots$
+action Set(flux_policy, FLUXLongPredictor)
+
+for ${\sf FLUXLongPredictor}$
+when on_call(${\sf flow\_start}$)
+check $agg\_net \sim$ read(LongDist[agg_net]) $\wedge$
+      $cpu \sim$ read(LongDist[cpu]) $\wedge$
+      $ram \sim$ read(LongDist[ram]) $\wedge\ \dots$
+action Set(flux_policy, FLUXShortPredictor)
 \end{dslbox}
 
 The above guardrails read the features to the prediction models ($agg\_net$, $cpu$, $ram$, etc.) and check whether they are from the same distribution as the training data distribution for the specific feature.
@@ -145,16 +135,13 @@ Even after an input is in distribution for a prediction model, if the training d
 Thus, besides a check on the inputs to the predictor, we must also evaluate the decision quality post-facto.
 In this case study, this is feasible because the ground-truth for the flow sizes will be available when the flow ends. At that point, we can check if the predicted sizes were correct or not. We enforce this via the following guardrail:
 \begin{dslbox}
-guardrail FLUXDecisionQuality {
-  for FLUXShortPredictor, FLUXLongPredictor
-  when periodic(30s)
-  over last$_{30}$
-  check avg(
-        Decision[arg(flow_end, flow_id)]) -
-        FlowSize[arg(flow_end, flow_id)])
-    ) < 10%
-  on_failure Set(flow_scheduler, Default)
-}
+for FLUXShortPredictor, FLUXLongPredictor
+when periodic(30s)
+check avg(
+      Decision[arg(flow_end, flow_id)]) -
+      FlowSize[arg(flow_end, flow_id)])
+  ) < 10%
+action Set(flow_scheduler, Default)
 \end{dslbox}
 
 The above guardrail assumes that the decisions made when the {\tt flow_start} function is called, is stored in the map {\tt Decision}, indexed by the flow ID. Further, the true sizes must also be stored in the map {\tt FlowSize} (available when the flow has ended.

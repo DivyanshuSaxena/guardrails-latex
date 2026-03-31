@@ -1,6 +1,6 @@
 \section{Performance Introspection}\label{sec:overview}
 
-As discussed above, performance can degrade when the assumptions underlying a policy’s design no longer hold.
+As discussed above, performance can degrade when the assumptions underlying a policy design no longer hold.
 Today, the general approach operators use to evaluate whether OS policies suffer performance degradation, and to what extent, is through extensive offline evaluation across a wide range of workloads, followed by manual inspection of end-to-end performance metrics.
 This process is tedious, incomplete, and ultimately unsatisfactory: no finite offline evaluation can anticipate the diversity of executions encountered in deployment.
 We argue that ensuring satisfaction of performance properties requires a different capability altogether: rather than relying solely on offline testing and analysis, the OS should be able to introspect whether its policies are behaving well {\it at run-time}, using signals available during execution, and intervene when they are not.
