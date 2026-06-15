@@ -1,15 +1,25 @@
 \section{Related work}
+\label{sec:related}
 
-\textbf{Dynamic instrumentation/Tracing:}  e.g. Dtrace, Xtrace, MagPie, Canopy. Dtrace works at OS level, Magpie at request level.
+\noindent
+{\bf {\em Offline performance analysis.}}
+The standard approach to validating policy behavior is offline benchmarking and profiling. Tools such as Linux \texttt{perf}~\cite{linuxperf} and Intel VTune~\cite{vtune} collect detailed execution profiles; DTrace~\cite{cantrill2004dynamic} enables rich low-overhead instrumentation in production systems; XTrace~\cite{xtrace} correlates events across components to diagnose performance anomalies; and post-hoc root-cause analysis systems such as X-ray~\cite{xray-osdi12}, Sage~\cite{sage-asplos21}, and Murphy~\cite{murphy-sigcomm23} go further by localizing the source of observed degradation. These tools help understand system behavior, but they are fundamentally retrospective: they diagnose problems after they occur rather than preventing them. In contrast, OS guardrails monitor policy behavior at run time and intervene when needed.
 
-\textbf{System perf monitoring: }All these systems have long cycles. Collect lot of data over many days, then optimize system. Second, they focus on overall system performance. We are targetting shorter cycles and specific policies. e.g. perfmon, vtune, 
+\noindent
+{\bf {\em Online performance monitoring.}}
+Some works perform continuous monitoring in production. Meta's FBDetect~\cite{fbdetect-sosp24} and ServiceLab~\cite{servicelab-osdi24} detect regressions introduced by code changes. These systems are effective at identifying performance drops but they operate at application or service level. In comparison, guardrails operate on OS policies and trigger corrective actions during runtime.
 
-\textbf{Anomaly detection:} SLO violations?
+The closest work to this paper is SOL~\cite{sol-asplos22} which provides safeguards for ML-based node agents in cloud platforms, halting an agent's control loop when unsafe behavior is detected. While SOL shares our goal of safe runtime behavior, its safeguards are hardcoded per-agent checks rather than a general-purpose specification language. It also does not address the problem of relating local safeguards to high-level performance objectives.
 
-\textbf{Adaptive systems:} Observe and apply policy such as Metrotone (DAC'12),
+\noindent
+{\bf {\em Adaptive systems.}}
+Several systems dynamically adjust policy and/or its parameters in response to observed workload behavior. Metronome~\cite{metronome12} is a self-adaptive system that observes application heartbeats and adjusts scheduling accordingly. OtterTune~\cite{ottertune-sigmod17} and CDBTune~\cite{cdbtune-sigmod19} use ML to tune database knobs online. Guardrails provide a generic framework to realize these systems.
+Recently, work on eBPF-based policy frameworks such as \texttt{sched_ext}~\cite{sched-ext} and CacheExt~\cite{cache-ext-sosp25} enables runtime switching between scheduling and caching policies. These systems provide the \emph{mechanism} for adaptation but leave the question of \emph{when} and \emph{why} to adapt. Guardrails provide a principled answer: adapt when a declared property is violated.
 
-\textbf{Root-cause analysis:} (also metastable failures maybe) e.g. Roots (WWW'17), Sage, Murphy, X-ray
-
-\textbf{Machine learning guardrails (not systems)}
-
-\textbf{Policy switching frameworks (maybe)} schedext, cacheext etc.
+\noindent
+{\bf {\em Runtime verification.}}
+Guardrails can be viewed as a domain-specific instance of monitoring-oriented programming (MOP)~\cite{mop-oopsla07}, and more broadly of aspect-oriented programming~\cite{kiczales1997aspect}. They inherit the separation-of-concerns intuition that monitoring and recovery logic should live \emph{around}, rather than inside, the core policy. Guardrails specialize these ideas to OS policies by making performance predicates and corrective actions first-class. Unlike general MOP, however, they are designed for production efficiency and for reasoning about how local checks relate to global performance objectives.
+% \eric{
+%     Need term to describe the properties language.
+%     and how its different from performance properties.
+% }

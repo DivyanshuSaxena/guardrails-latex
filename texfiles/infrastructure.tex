@@ -1,3 +1,38 @@
 \section{Infrastructure Support for Guardrails}\label{sec:infra}
 
-\todo{Describe the infrastructure support needed for the common functionalities.}
+% The guardrail specification is realized by run-time monitors that evaluate the guardrail property at every trigger point.
+We realize guardrail specifications written in GDL, through runtime monitors. A monitor collects required observables, evaluates the guardrail condition at every trigger point, and performs the corrective action if a violation is detected. We first describe the general infrastructure that all monitors share, and discuss policy- and guardrail-specific requirements alongside their case studies in Section~\ref{sec:case-studies}.
+
+\medskip\noindent
+{\it \textbf{Monitor placement.}}
+Guardrail monitors could be implemented as user-space daemons, or as an eBPF program attached to appropriate kernel functions.
+The choice depends on the trigger point and corrective action.
+Generally, guardrails with {\sf periodic} triggers are a natural fit for user-space daemons, while guardrails with {\sf on\_call} triggers are better suited to eBPF programs.
+Further, guardrails that update the policy upon violations require kernel support, while actions such as parameter tuning can be performed in userspace.
+
+% This choice also depends on the action specified in the guardrail, since some actions are naturally realized in user space whereas others require kernel support. Thus, different policies and guardrails may require different monitor implementations. \aditya{isn't user-space overhead high esp for very high freq periodic triggers?}
+% We provide the general infrastructure pieces needed in this section and discuss the policy- and guardrail-specific requirements with their case studies in \Cref{sec:case-studies}. 
+
+\medskip\noindent
+{\it \textbf{Runtime observability via {\tt proc} and eBPF.}}
+Guardrail properties rely on observability into kernel objects and kernel functions ({\sf KObject} and {\sf KFunc} as described in \Cref{tab:gdl-primitives}). 
+We obtain this visibility through two mechanisms.
+For statistics already maintained by the kernel, such as CPU utilization (used in \Cref{subsec:mllb-case-study}) or page-fault counts, monitors read the relevant state from {\tt /proc}.
+For observables tied to kernel functions, such as the {\sf decision(.)}, or {\sf arg(.)} primitives in \Cref{tab:gdl-primitives}, we use eBPF programs attached as kprobes and kretprobes.
+For example, to measure the execution time of a kernel function (the {\sf exec\_time(.)} primitive in \Cref{tab:gdl-primitives}), we attach an eBPF kprobe at the entry of the function to record the start timestamp in an eBPF map, and then read this value when the function returns via an eBPF kretprobe. To handle concurrent invocations correctly, we index each timestamp entry with a thread ID.
+
+% \paragraph{Customized state management via eBPF maps.}
+Guardrails may require observables that are neither exported directly by the kernel nor cleanly captured in a single function invocation.
+In some cases, the state is policy-specific and originates outside the kernel, such as the offline profiles used by CBMM.
+% or reference distributions associated with a learned FLUX model (Section~\ref{sec:motivating}).
+In other cases, the necessary observable may be a derived metric that must be maintained explicitly at run time such as prefetch usefulness in file readahead (see \Cref{subsec:kml-case-study}. 
+We use eBPF maps as a general-purpose storage layer to maintain such custom state.
+% Guardrail users can maintain arbitrary state in eBPF maps 
+Monitors can access these states using the {\sf read(.)} primitive in \Cref{tab:gdl-primitives}.
+
+\medskip\noindent
+{\it \textbf{Corrective actions.}}
+Guardrail actions may range from simple reports to changing some policy hyperparameter to switching the policy itself. While reports only require logging, changing the parameters can be achieved by simple mechanisms, such as toggling flags in {\tt /sys} files or updating policy parameters in userspace-visible files.
+Switching policies, however, may require more elaborate mechanisms. For such cases, we require the use of custom kernel modules with built-in hooks that expose explicit control points. For instance, the CBMM guardrail requires real-time update to the benefits. In our case study, we implement this via a kernel module that changes an in-kernel data structure.
+
+% Together, these mechanisms provide the substrate needed to implement practical guardrails, enabling continuous performance introspection and timely intervention in deployed systems.

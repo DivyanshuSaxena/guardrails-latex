@@ -1,0 +1,44 @@
+\subsection{Guardrail Semantics}\label{subsection:semantics}
+
+The previous subsections introduced guardrails as an abstraction and GDL as a language for specifying them. We now give a simple semantics for guardrails that captures their effect on policy execution. The purpose of this semantics is to formalize \emph{what} a guardrail does once it is evaluated, and then use these semantics to build the verification framework in \Cref{sec:verification}.
+% To keep the presentation focused, we abstract away from performance-related aspects of evaluation, such as trigger timing, and model only the logical effect of evaluating a guardrail on a state and a deployed policy.
+
+We consider the application of a guardrail to a policy $\pi$ in a system $S$, where the system may be the OS as a whole or a particular subsystem in which the policy operates. Let $\Sigma$ denote the set of possible run-time states of the system, including the relevant kernel-visible statistics and the state of in-kernel objects, and let $\mathsf P$ denote the set of policy names and $V^*$ denote the set of (positional) argument lists. The set of policies is $\Pi = \mathsf P \times V^*$.
+
+A guardrail is modeled as a triple
+$
+G = (P,A,E),
+$
+where $P : \Sigma \to \{0,1\}$ is the run-time condition monitored by the guardrail, $A : \Sigma \times \Pi \to \Pi$ is the corrective action applied when that condition fails, and $E : \Pi \to \{0,1\}$ specifies whether the guardrail is enabled for a given policy. Intuitively, $P$ captures the condition that should continue to hold while the policy is operating in its intended regime, $A$ specifies how the policy is repaired when that condition is violated, and $E$ determines the policies to which the guardrail applies.
+
+We write
+$ 
+G \models_{\sigma} \pi \to \pi'
+$
+to mean that guardrail $G$, when evaluated in state $\sigma$ under deployed policy $\pi$, produces an updated policy $\pi'$. This relation is defined by the  rules:
+\begin{mathpar}
+\inferrule[Policy-Same]{
+    E(\pi)=0 \lor P(\sigma)
+}{
+    G \models_{\sigma} \pi \to \pi
+}
+\and
+\inferrule[Policy-Change]{
+    E(\pi)=1 \quad \neg P(\sigma)
+}{
+    G \models_{\sigma} \pi \to A(\sigma,\pi)
+}
+\end{mathpar}
+
+Thus, the policy remains unchanged if a guardrail is disabled or a guardrail is enabled but its condition already holds; otherwise, the corrective action changes the policy.
+
+A guardrail $G = (E,A,P)$ monitors a system-under-observation given by a transition relation $\TransitionsVia{\sysstate}{\policy}{\sysstate'}$, which indicates that under policy $\policy$, the system steps from $\sysstate$ to $\sysstate'$. A single guardrail composes with the system semantics as follows:
+\[
+\inferrule*[right={~~Guarded-Trans}]
+  { \sigma \xrightarrow{\pi} \sigma' \\
+    G \models_{\sigma'} \pi \to \pi' }
+  { G \models \langle \sigma,\pi\rangle  \rightsquigarrow \langle \sigma',\pi'\rangle }
+\]
+In other words, the system takes a step according to policy $\policy$, the guardrail inspects the new state $\sysstate$, and updates the policy to $\policy'$, which may be a different policy (via \textsc{Policy-Change}) or the same policy (via \textsc{Policy-Same}).
+
+Our system can also support a set of guardrails monitoring a system simultaneously. The formal semantics for this can be found in Appendix~\ref{appdx:full-semantics}.

@@ -1,7 +1,7 @@
 \section{Discussion}\label{sec:discussion}
 
-\ds{Performance introspection is the key idea -- runtime guardrails are one way to achieve it for a specific class of properties. Need to elaborate what properties these do not support, and what more would be needed.}
+%\section{Discussion}
 
+Performance introspection is the central idea of this paper; guardrails realize it for properties that admit run-time checks over OS-visible observations and lightweight online responses. This excludes objectives that require long horizons, external application-level metrics, or interventions too expensive to perform during execution. Supporting such objectives would require richer cross-layer observability, longer-horizon state and reasoning, and mechanisms for deferred or offline adaptation.
 
-\ds{This should be addressed here: why does this only apply to the OS? I guess it applies generally but we are instantiating only in the OS because it is a rich space of policies, has a bunch of issues today, and is much harder to reason about?}
-\eric{I suppose this could go in the conclusion/future work}
+Performance introspection is broader than the OS. We focus on the OS because it is a rich and difficult setting: it has many performance-critical policies, already suffers from brittle specialization, and lacks visibility into the end-to-end objectives. These constraints make the OS a compelling instantiation, while broader extensions beyond the OS remain promising future work.

@@ -1,218 +1,447 @@
-% \section{Full Semantics}
+\section{Guarded System Semantics}
+\label{appdx:full-semantics}
+% We now lift the single-guardrail relation above to a semantics for a set of guardrails $\mathcal G = \{G_1,\ldots,G_n\}$.
+% Let a system be given by the tuple $(\Sigma,\Pi,\to)$, where
+% $ 
+% \TransitionsVia{\sigma}{\pi}{\sigma'}
+% $
+% indicates that the system steps from $\sigma$ to $\sigma'$ under deployed policy $\pi$.
 
-% \newcommand{\s}{s}
-% \newcommand{\Var}{\mathsf{Var}}
-% \newcommand{\Val}{\mathsf{Value}}
-% \newcommand{\States}{\mathcal S}
-
-% \newcommand{\Sys}{S}
-% \newcommand{\SStep}[3]{{#1} \rightarrow^{#2} {#3}}
-% \newcommand{\SStepN}[3]{{#1} \overset{#2}{\longrightarrow} {#3}}
-% \newcommand{\SysNext}[3]{{#1}({#2},{#3})}
-% \newcommand{\event}{e}
-% \newcommand{\Events}{\mathcal{E}}
-
-% \newcommand{\gcond}{g}
-% \newcommand{\gact}{a}
-% \newcommand{\GSet}{\mathcal G}
-
-% \newcommand{\Bool}{\mathbf{2}}
-% \newcommand{\True}{\mathbf{true}}
-% \newcommand{\False}{\mathbf{false}}
-
-% \newcommand{\trace}{\tau}
-% \newcommand{\TExtend}[3]{{#1} \cdot {#2}{#3}}
-% \newcommand{\TRestrict}[2]{#2_{[-{#1},\ldots]}}
-% \newcommand{\Traces}{\mathcal T}
-% \newcommand{\KTraces}[1]{\Traces_{#1}}
-
-% % \newcommand{\GSys}[2]{\langle {#1}, {#2}\rangle}
-% \newcommand{\GSys}[2]{{#1} \lhd {#2}}
-
-% \newcommand{\Monitor}[5]{\langle {#1}, {#2}, {#3} \rangle \leadsto \langle {#4}, {#5} \rangle}
-% \newcommand{\MonitorFix}[5]{\langle {#1}, {#2}, {#3} \rangle \leadsto^* \langle {#4}, {#5} \rangle}
-
-% \newcommand{\KGuardedStep}[7]{\ensuremath{{#2} \models_{#1} ({#3},{#4}) \rightsquigarrow^{#5} ({#6}, {#7}) }}
-
-% \newcommand{\SafetyK}[3]{{#2} \models_{#1} \square~{#3}}
-
-% \newcommand{\Inv}{\vartheta}
-% \newcommand{\RepInv}{\Delta}
-% \newcommand{\SystemModel}[3]{\Psi(#1,#2,#3)}
-% \newcommand{\SystemModelAction}[3]{\Psi^*(#1,#2,#3)}
-
-% A system state is a mapping from variables to values
-% $\s : \Var \to \Val$. We write the set of states $\States$ A system $\Sys$ is a tuple $\langle \s_0, {\SStep{}{}{}} \rangle$ of an initial state $\s_0$ and a deterministic step relation $\SStep{\s}{\event}{\s'}$ that updates the state from $\s$ to $\s'$ corresponding to an event $\event \in \Events$ from some fixed set of events $\Events$. As shorthand we will write $\SysNext{\Sys}{\s}{\event}$ for the set of states $\s'$ s.t. $\SStep{\s}{\event}{\s'}$. We also define $\SStepN{\s}{\event_1\cdots\event_n}{\s'}$ as the lifting of ${\SStep{}{}{}}$ to sequences of events.
-
-% A \emph{trace} is a (nonempty, infinite or finite) alternating sequence of states and events $\trace = \s_0\event_1\s_1\event_2\ldots \in \States \times (\Events \times \States)^*$. We write $\Traces$ for this set of traces. A trace $\trace = \s_0\event_1\s_1\event_2$ is valid for a system $S = \langle \s^*_0, \SStep{}{}{}\rangle$, if $\s_0 = \s^*_0$ and forall $i \geq 0$, $\SStep{\s_i}{\event_{i+1}}{\s_{i+1}}$. To extend a trace $\trace$ with an event-state pair $(\event, \s)$, write $\TExtend{\trace}{\event}{\s}$. To restrict a trace to only the most recent $k$ states, write $\TRestrict{k}{\trace}$.
-
-% A \emph{guardcount} $G$ is a pair $\langle \gcond, \gact \rangle$ where $\gcond : \Traces \to \Bool$, where $\Bool = \{\True, \False\}$, which maps a trace to a decision, and an action $\gact \in \Events^*$ that is a sequence of events to trigger when $g$ is $\False$ for a particular state. Since we cannot keep a complete history, we will care about $k$-bounded guardrails, wherein $\gcond : \KTraces{k} \to \Bool$, where $\KTraces{k} = \bigcup_{i=0}^{k-1} \States \times (\Events \times \States)^{i-1}$ is the set of traces with no more than $k$ states.
-% We use $\GSet$ to range over sets of guardrails.
-
-% The semantics of guardrails are given below:
-
-% \begin{mathpar}
-%     \inferrule[Recover]{
-%         G = \langle \gcond, a \rangle \in \GSet
-%         \and
-%         \gcond(\trace) = \False
-%         \and
-%         \SStepN{\s}{a}{\s'}
-%     }{
-%     \Monitor{\GSet}{\trace}{\s}{\s'}{\GSet \setminus \{G\}}
-%     }
-
-%     \inferrule[Ok]{
-%         G = \langle \gcond, a \rangle \in \GSet
-%         \and
-%         \gcond(\trace) = \True
-%     }{
-%         \Monitor{\GSet}{\trace}{\s}{\s}{\GSet \setminus \{G\}}
-%     }
-% \end{mathpar}
-% which can be lifted to the following
-% \begin{mathpar}
-%     \inferrule[Fix]{
-%         \Monitor{\GSet}{\trace}{\s}{\s''}{\GSet''} \and
-%         \MonitorFix{\GSet''}{\trace'}{\s''}{\s'}{\GSet'}
-%     }{
-%         \MonitorFix{\GSet}{\trace}{\s}{\s'}{\GSet'}
-%     }
-% \end{mathpar}
-
-
-
-% A \emph{guardrailed system}, or \emph{guarded system}, is a pair $\GSys\Sys\GSet$, whose semantics are given below: 
-
-
-% \begin{mathpar}
-
-% \inferrule[$k$-GuardedStep]{
-%     \SStep{\s}{\event}{\s'} \and
-%     \trace' = \TRestrict{k}{(\TExtend{\trace}{\event}{\s''})} \and
-%     \MonitorFix{\GSet}{\trace}{\s'}{\s''}{\emptyset}{}
-% } {
-%     \KGuardedStep{k}{\GSet}{\trace}{\s}{\event}{\s''}{\trace'}{}
-% }
-
-% \end{mathpar}
-
-
-% \section{Verification Conditions}
-
-% Now we develop the verificcation conditions required to prove that a guarded system $\GSys\Sys\GSet$ satisfies a safety property $\varphi$ with a $k$-bounded history, written $\SafetyK{k}{\GSys{\Sys}{\GSet}}{\varphi}$. This holds iff there exists an invariant $\Inv \subseteq \States \times \KTraces{k}$ s.t. $\Inv(\s_0, \s_0)$, where $\s_0$ is the initial state of $\Sys$, $\Inv(\s, \trace) \Rightarrow \varphi(\s, \trace)$ and
+% A guarded step has two phases. First, the system evolves from $\sigma$ to $\sigma'$ under the current policy $\pi$. Then, all guardrails are evaluated on the same post-state $\sigma'$ and the same originally deployed policy $\pi$. A guardrail $G_i=(P_i,A_i,E_i)$ is triggered exactly when $E_i(\pi)=1$ and $\neg P_i(\sigma')$. We write
 % \[
-% \textrm{if~} \Inv(\s,\trace),
-% \textrm{~and~} \KGuardedStep{k}{\GSet}{\trace}{\s}{\event}{\s'}{\tau'} \textrm{~then~}
-%     \Inv(\s',\trace')
+% T(\sigma',\pi) \;\defeq\; \{\, G_i \in \mathcal G \mid E_i(\pi)=1 \wedge \neg P_i(\sigma') \,\}
 % \]
+% for the set of triggered guardrails.
 
-% To do this, we need (at a high level) to show that from every state $\s$, with trace $\trace$, running the event $e$, updating the trace, and then taking whatever corrective actions are necessary, maintains $\Inv$. Assume we have a relation $\SystemModel{\s}{\event}{\s'}$ that serves as an over-approximation of the step semantics of the system (that is $\SStep{\s}{\event}{\s'} \implies \SystemModel{\s}{\event}{\s'}$). We can extend this in the standard way to actions:
+% Since multiple guardrails may be triggered simultaneously, we model their joint effect by serializing the triggered corrective actions in an arbitrary order, while keeping the trigger decisions fixed with respect to the same pair $(\sigma',\pi)$. Formally, we write
+% $ 
+% \mathcal G \models_{\sigma',\pi} \pi_0 \to \pi'
+% $
+% to mean that the guardrails in $\mathcal G$, all evaluated on post-state $\sigma'$ with triggering decisions determined by the original deployed policy $\pi$, transform the current accumulator policy $\pi_0$ into $\pi'$. This relation is defined inductively:
+
+% \begin{mathpar}
+% \inferrule*[right=Guards-Empty]
+%   { }
+%   { \emptyset \models_{\sigma',\pi} \pi_0 \to \pi_0 }
+
+% \inferrule*[right=Guards-Step]
+%   { G \in T(\sigma',\pi) \ \ \ 
+%     G \models_{\sigma'} \pi_0 \to \pi_1 \\
+%     \mathcal G \setminus \{G\} \models_{\sigma',\pi} \pi_1 \to \pi' }
+%   { \mathcal G \models_{\sigma',\pi} \pi_0 \to \pi' }
+% \end{mathpar}
+
+% The guarded transition relation is then:
+% \begin{mathpar}
+% \inferrule*[right=Guarded-Trans]
+%   { \sigma \xrightarrow{\pi} \sigma' \\
+%     \mathcal G \models_{\sigma',\pi} \pi \to \pi' }
+%   { \mathcal G \models \langle \sigma,\pi\rangle  \rightsquigarrow \langle \sigma',\pi'\rangle }
+% \end{mathpar}
+
+
+% The \textsc{Guards-Empty} rule leaves the policy unchanged when no guardrail is triggered. The \textsc{Guards-Step} rule applies one triggered guardrail action and continues with the rest, thereby modeling simultaneous execution as an arbitrary serialization of corrective actions. The \textsc{Guarded-Transition} rule then composes this update phase with the underlying system step: the system first moves from $\sigma$ to $\sigma'$ under policy $\pi$, after which the triggered guardrails jointly determine the policy $\pi'$ used on subsequent steps.
+
+
+% \section{Global Proof Obligation}
+% \label{appdx:multi-guardrail-generalization}
+
+% Suppose the system is instrumented with guardrails $\{G_1,\ldots,G_n\}$ and corresponding local guarantees $\varphi_1,\ldots,\varphi_n$. Let
+
+% \begin{equation}\label{eq:inv}
+% I(s,\pi)\;\defeq\;\bigwedge_{i=1}^n \bigl(E_i(\pi)\Rightarrow \varphi_i(s,\pi)\bigr).
+% \end{equation}
+% The global proof obligation is
 % \[
-% \SystemModelAction{\s_0}{a}{s_n} \Leftrightarrow
-%     \exists \s_1,\ldots, \s_{n-1}.~~
-%     \SystemModel{\s_0}{\event_1}{\s_1} 
-%     \wedge \cdots \wedge 
-%     \SystemModel{\s_{n-1}}{\event_n}{\s_n}
+% I(s,\pi)\Rightarrow \Phi(s,\pi).
 % \]
-% where $a = \event_1\cdots \event_n$. Then, for each guardrail, $G = \langle \gcond, \gact \rangle$ generate the following VC:
-% \begin{align*}
-%     &
-%     (\s = \trace[0] \wedge
-%     \Inv(\s, \trace) \wedge
-%     \SystemModel{\s}{\event}{\s_0} \\
-%     &
-%     ~~\wedge \neg \gcond(\TExtend{\trace}{\event}{\s_0})
-%     \\ &
-%     ~~\wedge\SystemModelAction{\s_0}{\gact}{\s_n})
-%     \\ &
-%     \!\Rightarrow
-%     \Inv(\s_n, \TExtend{\trace}{\event}{\s_n})
-% \end{align*}
+% This states that the conjunction of the local guarantees of all enabled guardrails is sufficient to imply the desired system-wide performance objective $\Phi$.
 
-% Then, we'll need to generate a similar VC for all subsets of $\GSet$, capturing which sets of guardrails might be triggered at each step. 
 
-% One way to simplify this is to come up with a per-guardrail invariant $\RepInv_i$ for each guardrail $G_i \in \GSet$.
-% Then, the following VCs suffice:
-% \begin{align*}
-%     &
-%     \bigwedge_{G_i \in \GSet} \RepInv_i(\s_0,\s_0)
-%     \\ 
-%     & \left(\bigwedge_{i \neq j} \Delta_j(s,\tau) \right)
-%     \wedge
-%     \gcond_i(\TExtend{\trace}{\event}{\s}) \Rightarrow  \RepInv_i(\s, \trace) \\
-%     &
-%     \left(\bigwedge_{i \neq j} \Delta_j(s,\tau) \right)
-%     \wedge
-%     \neg \gcond_i(\TExtend{\trace}{\event}{\s_0}) 
-%     \wedge \SystemModelAction{\s_{0}}{\gact}{\s_n})
-%     \Rightarrow \RepInv_i(\s_n, \trace) \\
-% \end{align*}
+% \paragraph{Global proof obligation.}
+% Suppose the system is instrumented with guardrails $\{G_1,\ldots,G_n\}$ and corresponding local guarantees $\varphi_1,\ldots,\varphi_n$. Let
 
-% Along with the following unifying condition:
-% \[\left(\bigwedge_{G_i \in \GSet} \RepInv_i(\s, \trace) \right)
-% \Rightarrow 
-% \varphi(\s, \trace)\]
+% \begin{equation}\label{eq:inv}
+% I(s,\pi)\;\defeq\;\bigwedge_{i=1}^n \bigl(E_i(\pi)\Rightarrow \varphi_i(s,\pi)\bigr).
+% \end{equation}
+% The global proof obligation is
+% \[
+% I(s,\pi)\Rightarrow \Phi(s,\pi).
+% \]
+% This states that the conjunction of the local guarantees of all enabled guardrails is sufficient to imply the desired system-wide performance objective $\Phi$.
 
-% \section{Old Semantics }
+% \paragraph{Compatibility obligation.}
+% The obligations above suffice when reasoning about a single guardrail in isolation. When multiple guardrails may be enabled on the same policy, however, we must additionally ensure that the corrective action of one guardrail does not invalidate the local guarantee expected by another. Accordingly, for each pair of distinct guardrails $G_i$ and $G_j$, we require
+% \[
+% \begin{array}{@{}c@{}}
+% E_i(\pi)\wedge \neg P_i(s)\wedge \varphi_j(s,\hat\pi)
+% \\
+% \wedge G_i \models_s \hat\pi \to \hat\pi'
+% \end{array}
+% \Rightarrow
+% \varphi_j(s,\hat\pi')
+% \qquad
+% \textsc{Compat}_{i,j}
+% \]
+% This condition says that if guardrail $G_j$'s local guarantee already holds, then any serialized execution of guardrail $G_i$ must preserve that guarantee whenever $G_i$ was triggered by the base step. This non-interference condition is what makes the overall composition argument sound.
 
-% \paragraph{Runtime monitors for guardrails.}
-% In principle, guardrails as defined above apply to every system state $x$ that a system may observe.
-% However, there is a cost associated with evaluating the performance condition $\condition{g}$ -- maintaining the relevant summaries in the kernel state and reading them when evaluating the property imposes a computational as well as storage cost. 
-% Thus, in practice, the evaluation of guardrails must be restricted to a small set of `useful' points where the performance condition is likely to be violated.
-% Additionally, alternate policies for the same task may warrant different types of guardrails.
-% For example, a hugepage promotion policy based on offline cost-benefit profiling~\cite{cbmm-atc22} may require two guardrails: one for tracking whether the offline-profiled benefits are still accurate at run-time, and another for checking if the overall policy is resulting in useful promotions.
-% \sujay{I dont understand why we need the latter. If the former is correct, the latter is implied, right? If there was some stochasticity in the policy, then I agree, we would need both. But with CBMM, as it is, I don't think we need both.}
-% However, the default hugepage promotion policy will not require the former guardrail (as it does not use cost-benefit analysis).
-% Thus, we also need a mechanism to enable and disable the evaluation of guardrails in a live system.
 
-% \ds{This semantics misses event-driven triggers. For example, we have trigger type {\tt on_call}; one way to capture that is to record the relevant event summaries in the current state.}
-% Both of these requirements are met by runtime guardrail monitors.
-% Formally, a runtime monitor $M$ is a tuple $(G, \trigger{}, \enabledMap)$ where $G$ is the guardrail that $M$ is monitoring, $\trigger{}:\states\xrightarrow{}\{{\sf true},{\sf false}\}$ is a function that checks whether a given current system state meets the requirement for `triggering' the guardrail evaluation, and $\enabledMap:\policies\xrightarrow{}\{{\sf true},{\sf false}\}$ is a mapping from policies to a boolean that states whether the monitor $M$ should be enabled for the policy $\policy \in \policies$.
-% We write $\monitor{M}{x}{\policy}{\policy'}$ to denote that when a monitor $M$ observes the current system state $x$ for a system under policy $\policy$, the resulting outcome is the update of policy to $\policy'$. These semantics are defined as:
-% \begin{mathpar}
-% \inferrule[Not-Triggered]{ 
-%     % M=(G,\trigger{},\enabledMap) \quad
-%     \trigger{}(x)={\sf false}
-% }{
-%   \monitor{(G,\trigger{},\enabledMap)}{x}{\policy}{\policy}
-% }\quad
-% \inferrule[Not-Enabled]{
-%     % M=(G,\trigger{},\enabledMap) \quad
-%     \enabledMap(\policy)={\sf false}
-% }{
-%   \monitor{(G,\trigger{},\enabledMap)}{x}{\policy}{\policy}
-% }\\
-% \inferrule[Triggered]{
-%     % M=(G,\trigger{},\enabledMap) \quad
-%     \enabledMap(\policy)={\sf true} \quad
-%     \trigger{}(x)={\sf true} \quad
-%     \guard{G}{x}{\policy}{\policy'}
-% }{
-%   \monitor{(G,\trigger{},\enabledMap)}{x}{\policy}{\policy'}
-% }
-% \end{mathpar}
+% \begin{theorem}[Soundness]
+% Let
+% $ 
+% I(s,\pi) 
+% $ be defined as in Eq.~\ref{eq:inv}, and assume the initial runtime state satisfies $I$. If every installed guardrail satisfies \textsc{Maintain} and \textsc{Recover}, and every distinct pair satisfies \textsc{Compat}, and $I \Rightarrow \Phi$, then every  state reachable under the guarded semantics satisfies $\Phi$.
+% \end{theorem}
 
-% \paragraph{System transitions under guardrail monitors.}
-% With the semantics of guardrails and their monitors defined, we can now define the components \aditya{what is this referring to?} of a system under guardrails and develop semantics \aditya{why do these matter?} of how it operates when monitors are triggered. 
-% We denote a system $S$ using the tuple $(\states,\policies,\transitions,\monitors)$, where $\states$ and $\policies$ are as defined in the notations above.
-% $\transitions \subseteq \states \times \policies \times \states$ is a relation that determines the system transitions from one state to another given a particular policy, and $\monitors$ is the exhaustive set of monitors for guardrails for all policies in $\policies$ (note that some monitors in $\monitors$ may be disabled at any point in time).
+% \begin{proof}
+% We prove the theorem by induction on the length of guarded executions.
+% Consider an arbitrary guarded transition
+% \[
+% \mathcal G \models \langle s,\pi \rangle \rightsquigarrow \langle s',\pi' \rangle .
+% \]
+% By the guarded-system semantics, there is a base system step
+% $ 
+% s \xrightarrow{\pi} s'
+% $
+% followed by a serialization of the triggered guardrails. Let
+% $ 
+% T(s',\pi)=\{G_{i_1},\ldots,G_{i_m}\}
+% $
+% be the triggered set, ordered according to the particular serialization used in this transition, and let
+% $ 
+% \pi_0,\pi_1,\ldots,\pi_m
+% $
+% be the corresponding sequence of  policies, where $\pi_0=\pi$, $\pi_m=\pi'$, and for each $\ell \in \{1,\ldots,m\}$,
+% $ 
+% G_{i_\ell}\models_{s'} \pi_{\ell-1}\to \pi_\ell .
+% $
+% We first establish the local guarantees of the enabled guardrails that are \emph{not} triggered. Let
+% $ 
+% U \;=\; \{\, j \mid E_j(\pi)=1 \text{ and } P_j(s') \,\}.
+% $
+% For each $j \in U$, \textsc{Maintain}$_j$ applied to the base step $M(s,\pi,s')$ yields
+% $ 
+% \varphi_j(s',\pi_0)
+% $.
+% We now show, by induction on $\ell \in [0,m]$, that after processing the first $\ell$ triggered guardrails, every guardrail in
+% $ 
+% U \cup \{i_1,\ldots,i_\ell\}
+% $
+% satisfies its local guarantee at $(s',\pi_\ell)$.
 
-% We also define the runtime state for $S$ as $\runtimestate{x}{\pi}$, where $x \in \states$ is the current system state and $\pi$ is the currently deployed policy under evaluation.
-% Then the transition semantics for the system $S$ is given by the following rules: \aditya{explain the rules in english. as it stands, unclear why this section is interesting and why it matters}
-% \begin{mathpar}
-% \inferrule[Safe-Transition]{ 
-%     % S=(\states,\policies,\transitions,\monitors) \quad
-%     \forall m \in \monitors.\monitor{m}{x}{\policy}{\policy} \quad
-%     (x,\policy,x')\in\transitions
-% }{
-%   \transition{(\states,\policies,\transitions,\monitors)}{\runtimestate{x}{\policy}}{\runtimestate{x'}{\policy}}
-% }\\
-% \inferrule[Guarded-Transition]{
-%     % S=(\states,\policies,\transitions,\monitors) \quad
-%     \exists m \in \monitors.\monitor{m}{x}{\policy}{\policy'} \quad
-%     (x,\policy',x')\in\transitions
-% }{
-%   \transition{(\states,\policies,\transitions,\monitors)}{\runtimestate{x}{\policy}}{\runtimestate{x'}{\policy'}}
-% }
-% \end{mathpar}
+% \medskip
+% \noindent
+% \textbf{Base case $(\ell=0)$.}
+% This is exactly the statement established above for all $j \in U$.
+
+% \medskip
+% \noindent
+% \textbf{Inductive step.}
+% Assume the claim holds for $\ell-1$, where $1 \le \ell \le m$. We show it for $\ell$.
+% Since $G_{i_\ell}$ is triggered at $(s',\pi)$, we have $E_{i_\ell}(\pi)=1$ and $\neg P_{i_\ell}(s')$. By construction of the serialization,
+% $ 
+% G_{i_\ell}\models_{s'} \pi_{\ell-1}\to \pi_\ell .
+% $
+% Applying \textsc{Recover}$_{i_\ell}$ to this serialized step, we obtain
+% $ 
+% \varphi_{i_\ell}(s',\pi_\ell)
+% $.
+% Now let $j \in U \cup \{i_1,\ldots,i_{\ell-1}\}$. By the induction hypothesis,
+% $ 
+% \varphi_j(s',\pi_{\ell-1})
+% $
+% already holds. Using the same serialized step
+% $ 
+% G_{i_\ell}\models_{s'} \pi_{\ell-1}\to \pi_\ell
+% $
+% and \textsc{Compat}$_{i_\ell,j}$, we conclude that executing $G_{i_\ell}$ preserves $\varphi_j$, so
+% $ 
+% \varphi_j(s',\pi_\ell)
+% $
+% also holds.
+% Thus, after processing $G_{i_\ell}$, every guardrail in
+% $ 
+% U \cup \{i_1,\ldots,i_\ell\}
+% $
+% satisfies its local guarantee at $(s',\pi_\ell)$, completing the inductive step. Thus, after processing all triggered guardrails, every guardrail in
+% $ 
+% U \cup \{i_1,\ldots,i_m\}
+% $
+% satisfies its local guarantee at $(s',\pi_m)$. By definition of $U$ and $T(s',\pi)$, this is exactly the set of enabled guardrails at the current step. Since $\pi_m=\pi'$, it follows that
+% $
+% I(s',\pi')
+% $
+% holds. Thus, $I$ is preserved by every guarded transition. Since the initial runtime state satisfies $I$, an induction on the length of guarded executions implies that every reachable  state satisfies $I$. Finally, because $I \Rightarrow \Phi$, every reachable  state also satisfies~$\Phi$.
+% \end{proof}
+
+
+% \paragraph{Selected-guard semantics.}
+Once a guardrail has been selected into the current repair phase, its execution
+does not re-check enabledness on the accumulator policy. We therefore use the
+following auxiliary relation:
+\[
+G \models^{\mathsf{act}}_{\sigma} \hat\pi \to \hat\pi'
+\]
+which means that guardrail $G$, having already been selected into the active set,
+executes on post-state $\sigma$ and accumulator policy $\hat\pi$, producing
+$\hat\pi'$. Formally:
+\begin{mathpar}
+\inferrule[Active-Same]{
+    P(\sigma)
+}{
+    G \models^{\mathsf{act}}_{\sigma} \hat\pi \to \hat\pi
+}
+\and
+\inferrule[Active-Change]{
+    \neg P(\sigma)
+}{
+    G \models^{\mathsf{act}}_{\sigma} \hat\pi \to A(\sigma,\hat\pi)
+}
+\end{mathpar}
+
+\paragraph{Frozen-active-set guarded semantics.}
+Let
+\[
+T(\sigma',\pi) \;\defeq\; \{\, G_i \in \mathcal G \mid E_i(\pi)=1 \wedge \neg P_i(\sigma') \,\}
+\]
+be the triggered set computed from the original policy $\pi$ and the shared
+post-state $\sigma'$. We write
+\[
+\mathcal G \models^{\mathsf{act}}_{\sigma',\pi} \hat\pi \to \hat\pi'
+\]
+to mean that the guardrails selected in $T(\sigma',\pi)$ transform the current
+accumulator policy $\hat\pi$ into $\hat\pi'$ under an arbitrary serialization.
+This relation is defined inductively by:
+\begin{mathpar}
+\inferrule*[right=Actives-Empty]
+  { }
+  { \emptyset \models^{\mathsf{act}}_{\sigma',\pi} \hat\pi \to \hat\pi }
+
+\inferrule*[right=Actives-Step]
+  { G \in T(\sigma',\pi) \\
+    G \models^{\mathsf{act}}_{\sigma'} \hat\pi \to \hat\pi_1 \\
+    \mathcal G \setminus \{G\} \models^{\mathsf{act}}_{\sigma',\pi} \hat\pi_1 \to \hat\pi' }
+  { \mathcal G \models^{\mathsf{act}}_{\sigma',\pi} \hat\pi \to \hat\pi' }
+\end{mathpar}
+
+The corresponding guarded transition relation is:
+\begin{mathpar}
+\inferrule*[right=Guarded-Trans$_{\mathsf{act}}$]
+  { \sigma \xrightarrow{\pi} \sigma' \\
+    \mathcal G \models^{\mathsf{act}}_{\sigma',\pi} \pi \to \pi' }
+  { \mathcal G \models^{\mathsf{act}} \langle \sigma,\pi\rangle \rightsquigarrow \langle \sigma',\pi'\rangle }
+\end{mathpar}
+
+\section{Verification Soundness}
+\label{appdx:verification-soundness}
+For each guardrail $G_i = (\property{i},\action{i},\enabled_i)$ and chosen local
+guarantee $\varphi_i$, we assume:
+\[
+\begin{array}{@{}c@{\qquad}l@{}}
+M(s,\pi,s') \wedge E_i(\pi) \wedge P_i(s')
+\Rightarrow
+\varphi_i(s',\pi)
+&
+\textsc{Maintain}_i
+\\[0.8em]
+\begin{array}{@{}c@{}}
+M(s,\pi,s') \wedge E_i(\pi) \wedge \neg P_i(s')
+\\
+\wedge\; G_i \models^{\mathsf{act}}_{s'} \hat\pi \to \hat\pi'
+\end{array}
+\Rightarrow
+\varphi_i(s',\hat\pi')
+&
+\textsc{Recover}_i
+\end{array}
+\]
+
+\paragraph{Compatibility obligation.}
+For each distinct pair of guardrails $G_i$ and $G_j$, we assume:
+\[
+\begin{array}{@{}c@{}}
+E_i(\pi)\wedge \neg P_i(s)\wedge \varphi_j(s,\hat\pi)
+\\
+\wedge G_i \models^{\mathsf{act}}_s \hat\pi \to \hat\pi'
+\end{array}
+\Rightarrow
+\varphi_j(s,\hat\pi')
+\qquad
+\textsc{Compat}_{i,j}
+\]
+This says that once the active set has been fixed, executing one selected
+guardrail preserves the guarantees already established for the others.
+
+\paragraph{Active-set invariant.}
+Since enabledness is determined from the input policy that selected the active
+set, the relevant conjunction of local guarantees must be parameterized by that
+policy. For any input policy $\pi_0$, define
+\begin{equation}
+I_{\pi_0}(s,\hat\pi)\;\defeq\;\bigwedge_{i=1}^n \bigl(E_i(\pi_0)\Rightarrow \varphi_i(s,\hat\pi)\bigr).
+\label{eq:active-set-invariant}
+\end{equation}
+The corresponding global proof obligation is
+\[
+\forall \pi_0,s,\hat\pi.\;
+I_{\pi_0}(s,\hat\pi)\Rightarrow \Phi(s,\hat\pi).
+\]
+
+\begin{theorem}[One-Step Soundness Under Frozen Active Sets]
+\label{thm:frozen-active-set-soundness}
+Assume every installed guardrail satisfies \textsc{Maintain} and
+\textsc{Recover}, every distinct pair satisfies \textsc{Compat}, and
+\[
+\forall \pi_0,s,\hat\pi.\;
+I_{\pi_0}(s,\hat\pi)\Rightarrow \Phi(s,\hat\pi).
+\]
+If
+\[
+\mathcal G \models^{\mathsf{act}} \langle s,\pi\rangle \rightsquigarrow \langle s',\pi'\rangle,
+\]
+then
+\[
+\Phi(s',\pi').
+\]
+\end{theorem}
+
+\begin{proof}
+Consider an arbitrary guarded transition
+\[
+\mathcal G \models^{\mathsf{act}} \langle s,\pi\rangle \rightsquigarrow \langle s',\pi'\rangle.
+\]
+By \textsc{Guarded-Trans}$_{\mathsf{act}}$, there is a base system step
+\[
+s \xrightarrow{\pi} s'
+\]
+followed by a serialization of the triggered guardrails computed from the pair
+$(s',\pi)$. Let
+\[
+T(s',\pi)=\{G_{i_1},\ldots,G_{i_m}\}
+\]
+be the triggered set, ordered according to the serialization chosen in this
+transition, and let
+\[
+\pi_0,\pi_1,\ldots,\pi_m
+\]
+be the corresponding sequence of accumulator policies, where $\pi_0=\pi$,
+$\pi_m=\pi'$, and for each $\ell \in \{1,\ldots,m\}$,
+\[
+G_{i_\ell}\models^{\mathsf{act}}_{s'} \pi_{\ell-1}\to \pi_\ell .
+\]
+
+Let
+\[
+U \;\defeq\; \{\, j \mid E_j(\pi)=1 \text{ and } P_j(s') \,\}.
+\]
+Thus, $U$ is exactly the set of guardrails enabled on the input policy whose
+monitored conditions already hold on the shared post-state.
+
+For each $j \in U$, \textsc{Maintain}$_j$ applied to the base step
+$M(s,\pi,s')$ yields
+\[
+\varphi_j(s',\pi_0).
+\]
+We now show, by induction on $\ell \in [0,m]$, that after processing the first
+$\ell$ selected guardrails, every guardrail in
+\[
+U \cup \{i_1,\ldots,i_\ell\}
+\]
+satisfies its local guarantee at $(s',\pi_\ell)$.
+
+\medskip
+\noindent
+\textbf{Base case $(\ell=0)$.}
+This is exactly the statement established above for all $j \in U$.
+
+\medskip
+\noindent
+\textbf{Inductive step.}
+Assume the claim holds for $\ell-1$, where $1 \le \ell \le m$. We show it for
+$\ell$.
+Since $G_{i_\ell}\in T(s',\pi)$, we have $E_{i_\ell}(\pi)=1$ and
+$\neg P_{i_\ell}(s')$. By construction of the serialization,
+\[
+G_{i_\ell}\models^{\mathsf{act}}_{s'} \pi_{\ell-1}\to \pi_\ell .
+\]
+Applying \textsc{Recover}$_{i_\ell}$ to this selected-guard step yields
+\[
+\varphi_{i_\ell}(s',\pi_\ell).
+\]
+
+Now let $j \in U \cup \{i_1,\ldots,i_{\ell-1}\}$. By the induction hypothesis,
+\[
+\varphi_j(s',\pi_{\ell-1})
+\]
+already holds. Using the same selected-guard step
+\[
+G_{i_\ell}\models^{\mathsf{act}}_{s'} \pi_{\ell-1}\to \pi_\ell
+\]
+and \textsc{Compat}$_{i_\ell,j}$, we conclude that executing $G_{i_\ell}$
+preserves $\varphi_j$, so
+\[
+\varphi_j(s',\pi_\ell)
+\]
+also holds.
+
+Thus, after processing $G_{i_\ell}$, every guardrail in
+\[
+U \cup \{i_1,\ldots,i_\ell\}
+\]
+satisfies its local guarantee at $(s',\pi_\ell)$, completing the inductive
+step.
+
+Taking $\ell=m$, we conclude that every guardrail in
+\[
+U \cup \{i_1,\ldots,i_m\}
+\]
+satisfies its local guarantee at $(s',\pi_m)$.
+By definition of $U$ and $T(s',\pi)$,
+\[
+U \cup \{i_1,\ldots,i_m\}
+\;=\;
+\{\, j \mid E_j(\pi)=1 \,\},
+\]
+because every guardrail enabled on the input policy either satisfies its
+property on $s'$ and belongs to $U$, or violates its property on $s'$ and
+belongs to $T(s',\pi)$.
+Since $\pi_m=\pi'$, it follows that
+\[
+I_\pi(s',\pi')
+\]
+holds.
+The global proof obligation therefore yields
+\[
+\Phi(s',\pi'),
+\]
+as required.
+\end{proof}
+
+\begin{corollary}[Reachable-State Soundness]
+\label{cor:frozen-active-set-reachability}
+Assume the hypotheses of
+Theorem~\ref{thm:frozen-active-set-soundness}, and assume the initial runtime
+state $\langle s_0,\pi_0\rangle$ satisfies
+\[
+I_{\pi_0}(s_0,\pi_0).
+\]
+Then every state reachable under
+\[
+\mathcal G \models^{\mathsf{act}} \langle s,\pi\rangle \rightsquigarrow \langle s',\pi'\rangle
+\]
+satisfies $\Phi$.
+\end{corollary}
+
+\begin{proof}
+For the initial state, $I_{\pi_0}(s_0,\pi_0)$ and the global proof obligation
+immediately imply $\Phi(s_0,\pi_0)$.
+Now consider any reachable state obtained after at least one guarded transition.
+Such a state is the target of some transition
+\[
+\mathcal G \models^{\mathsf{act}} \langle s,\pi\rangle \rightsquigarrow \langle s',\pi'\rangle.
+\]
+By Theorem~\ref{thm:frozen-active-set-soundness}, this implies
+\[
+\Phi(s',\pi').
+\]
+Hence every reachable state satisfies $\Phi$.
+\end{proof}

@@ -1,0 +1,55 @@
+\section{Introduction}\label{sec:introduction}
+
+Operating System (OS) policies have traditionally been designed for generality. They are expected to work reasonably well across many workloads and hardware platforms.
+As a result, policies are largely static with only a handful of tunable parameters such as enabling hugepages or adjusting task priorities. 
+% \eric{therefore? these feel like separate concerns} expose only coarse tuning knobs, such as enabling hugepages or adjusting task priorities. 
+However, such a design is increasingly mismatched to modern systems, where applications evolve rapidly, workloads are highly dynamic, and a single machine may combine heterogeneous cores, memory tiers, and accelerators.
+
+As a result, OS policy design is becoming increasingly specialized, moving away from one-size-fits-all defaults, toward policies tailored to particular workloads, hardware characteristics, and deployment settings.
+This is reflected in eBPF-based customization of OS subsystems~\cite{kflex-sosp24,cache-ext-sosp25,sched-ext,meta-lavd}, in the use of machine learning both to tune policy parameters~\cite{tuning-pacmi25,agentic-tuning-ml4sys25} and in constructing learned policies~\cite{heimdall-eurosys25,orca-sigcomm20,kml-tos23,kleio-hpdc19}.
+This may only accelerate further as AI agents are increasingly used to generate new kernel policies~\cite{policysmith-hotnets25,glia-arxiv25,barbarians25,vulcan-arxiv25,agentic-os-ml4sys25}.
+
+Unfortunately, such specialization creates a new class of problems. Specialized policies derive their performance from assumptions about workloads and environments, yet those assumptions may break at deployment time, and whether that leads to performance degradation is usually neither enforced nor checked! A policy may assume, for example, that offline-profiled patterns remain stable or that a learned predictor continues to see in-distribution inputs. When such assumptions fail, the policy may silently stop delivering intended performance benefits. 
+% \aditya{sujay we can make this a footnote. otherwise - it breaks flow}
+% \aditya{add a forward pointer to section 2 if we are able to get results} 
+Offline end-to-end analysis over several workloads may reveal that a policy underperformed, but it rarely explains why. In particular, it does not identify which assumption failed, what part of the policy caused the failure, and what part of the policy needs to change and how. As a result, policy development often degenerates into a painful trial-and-error cycle (\Cref{sec:background}).
+
+In this paper, we argue that desired performance properties should be treated as a first-class system-design concern for OS policies, enforced at runtime, rather than evaluated offline. To this end, we propose a framework for {\bf performance introspection}, equipping the OS with the ability to check if its policies are delivering their intended performance {\em at run time} and respond when not. We realize this idea through the concept of {\bf OS guardrails}: that pairs a runtime-checkable performance condition with a corrective action that is invoked when the condition is violated. 
+%\aditya{the rest of this para seems to repeat what was said earlier. how to make it unique?} Rather than relying solely on offline benchmarking, 
+Guardrails help the OS identify problematic behavior, and trigger a targeted response, ranging from updating policy parameters, switching policies, or falling back to a safer default.
+
+% However, realizing this idea as a practical OS mechanism is not straightforward and raises a few core challenges: 
+% \begin{itemize}[leftmargin=*]
+%    \item \textbf{Performance is hard to observe directly.} The performance objective that a designer cares about is often not directly monitorable inside the kernel. Therefore, guardrails need runtime conditions that are observable yet still faithfully reflect the intended performance goal.
+    
+%     \item \textbf{No single guardrail fits all policies.} Different policies depend on different assumptions and can go wrong in different ways. A memory-management policy, a load balancer, and a learned scheduler may require different observations, different checks, and different repairs.
+    
+%     \item \textbf{Local checks do not automatically imply global correctness.} A runtime check is only a proxy for the end-to-end property the designer ultimately wants. The system must therefore connect local conditions and local repairs to higher-level performance guarantees.
+    
+%     \item \textbf{Introspection must not become the bottleneck.} Since guardrails execute in the OS itself, they must remain lightweight enough to run continuously without undermining the performance they are meant to protect.
+% \end{itemize}
+
+Specifying per-policy performance properties, however, is not straightforward. System operators typically reason about end-to-end objectives such as p99 I/O latencies, not about the properties that individual OS policies should hold. Translating these high-level goals into concrete, per-policy guardrails presents several challenges. 
+
+% \begin{itemize}[leftmargin=*]
+\noindent\textbf{1. End-to-end goals are opaque to the OS.} Performance objectives that operators usually care about are usually not visible to the kernel, and hence, unusable for run-time checks. Therefore, guardrails need runtime conditions that are observable and actionable.
+
+\noindent\textbf{2. Local checks do not automatically imply global correctness.} Operators need assurance that a guardrail monitoring a property actually serves their end-to-end objective. Our framework must therefore connect local guardrail conditions and repairs to higher-level performance guarantees.
+
+\noindent\textbf{3. Introspection must not become the bottleneck}. Since guardrails execute in the OS itself, they must remain light-weight enough to run continuously without undermining the performance they are meant to protect.
+% \end{itemize}
+
+In this paper, we first highlight the principles that should back the guardrails framework. Then, we use these principles to design a Guardrail Description Language (GDL) that enables operators express policy-specific checks and corrective actions over kernel-visible signals.
+%, addressing the first two challenges. %s C1 \& C2. 
+Additionally, we provide a lightweight verification interface for connecting local guardrails to higher-level performance objectives that designers actually care about, including in the presence of multiple interacting guardrails. We realize this framework for six case studies through eBPF-based implementations that enable low-overhead monitoring in the kernel.
+
+% This overcomes the next challenge by connecting local checks to global correctness guarantees. We tackle the final challenge by developing an end-to-end framework through a low-overhead eBPF-based implementation that makes continuous performance introspection practical in the kernel.
+
+% We present a framework for practical performance introspection for OS policies that addresses these challenges. We develop principles for designing guardrails whose conditions are monitorable at runtime yet still capture policy-relevant performance behavior. We then introduce a Guardrail Description Language (\lang) for specifying policy-specific checks and corrective actions over kernel-visible signals. To connect these local mechanisms to the higher-level objectives that designers actually care about, we provide a lightweight verification interface that relates guardrail conditions to performance properties and supports reasoning about multiple guardrails simultaneously. Finally, we realize this framework through an eBPF-based implementation that enables low-overhead monitoring in the kernel.
+
+We evaluate guardrails across six different kernel policies comprising both traditional and learned policies, and with different degrees of corrective actions.
+With our case studies, we demonstrate how guardrails helped detect deployment-time assumption failures for Linux hugepage promotion and memory compaction policies; enabled targeted corrections for a learned flow scheduling and a learned CPU load balancing policy; and pinpoint potential causes of performance regressions for a memory tiering policy and a learned readahead prefetching policy.
+% (b) identify which signals or decisions indicate that a policy is no longer operating in the regime for which it was designed, 
+% \aditya{drop this last sentence - it is repetitive. elaborate more on results:}
+% More broadly, our case studies suggest that performance introspection provides a systematic way to design, debug, and deploy specialized OS policies whose assumptions are checked continuously during execution rather than only after performance has already regressed.
+

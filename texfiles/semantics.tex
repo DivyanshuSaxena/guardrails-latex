@@ -1,0 +1,61 @@
+\subsection{Guardrail Semantics}\label{subsection:semantics}
+
+The previous subsections introduced guardrails as an abstraction and GDL as a language for specifying them. We now give a simple semantics for guardrails that captures their effect on policy execution. The purpose of this semantics is to formalize \emph{what} a guardrail does once it is evaluated. To keep the presentation as simple as possible, we do not model performance-related aspects of guardrail evaluation, such as trigger conditions, as they do not change the logical effect of guardrail evaluation itself.
+
+We consider the application of a guardrail to a policy $\pi$ in a system $S$, where the system may be the OS as a whole or a particular subsystem in which the policy operates. Let $\Sigma$ denote the set of possible run-time states of the system, including the relevant kernel-visible statistics and the state of in-kernel objects. We write $\Pi$ to denote the set of policies that may be deployed in the system. 
+%A deployed policy may additionally carry parameters, but we leave these implicit unless they are needed explicitly.
+
+To describe the semantics, a guardrail is modeled as a triple
+$ 
+G = (P, A, E)
+$ 
+where:
+$P : \Sigma \to \{0,1\}$ is the run-time condition monitored by the guardrail,  $A : \Sigma \times \Pi \to \Pi$ is the corrective action applied when the condition fails, and 
+$E : \Pi \to \{0,1\}$ specifies whether the guardrail is enabled for a given policy. Intuitively, $P$ captures the condition that should continue to hold while the policy is operating in its intended regime, $A$ specifies how the policy should be repaired when that condition is violated, and $E$ determines the policies to which the guardrail applies.
+
+We write
+$ 
+G \models_{\sigma} \pi \to \pi'
+$
+to mean that guardrail $G$, when evaluated in state $\sigma$ under deployed policy $\pi$, produces an updated policy $\pi'$. This relation is defined by the following rules:
+\begin{mathpar}
+\inferrule[Guard-Disabled]{
+    \enabled(\policy_\args) = 0
+}{
+  \guard{(\property{},\action{},\enabled)}{\sysstate}{\ppol{\policy}{\args}}{\ppol{\policy}{\args}}
+}\quad
+\inferrule[Guard-OK]{ 
+    \enabled(\policy_\args) = 1 =
+    \property{}(\sysstate)
+}{
+  \guard{(\property{},\action{},\enabled)}{\sysstate}{\ppol{\policy}{\args}}{\ppol{\policy}{\args}}
+}\\
+\inferrule[Guard-Violation]{
+    \enabled(\policy_\args)
+    \neq 0 = \property{}(\sysstate)
+}{
+    \guard{(\property{},\action{},\enabled)}{\sysstate}{\ppol{\policy}{\args}}{\action{}(\sysstate,\ppol{\policy}{\args})}
+}
+\end{mathpar}
+
+That is,  a disabled guardrail has no effect, an enabled guardrail leaves the policy unchanged when its condition already holds, and otherwise applies its corrective action.
+
+
+\paragraph{Guarded-system semantics.}
+We now define the overall system semantics induced by a single guardrail $G$.
+Let a system be given by the tuple $(\states,\policies,\transitions)$, where $\states$ and $\policies$ are defined as above, and $\transitions$ is the transition relation for the system. That is, $\TransitionsVia{\sysstate}{\ppol\policy\args}{\sysstate'}$ indicates that the system steps from $\sysstate$ to $\sysstate'$ under policy $\ppol\policy\args$.
+The guarded system is then an extension of $S$, where at each step, it first checks whether the guardrail is violated and repairs the deployed parameterized policy if needed.
+This is captured by the rule:
+\begin{mathpar}
+\inferrule[Guarded-Transition]{
+    \TransitionsVia{\sysstate}{\ppol{\policy}{\args'}}{\sysstate'}
+    \quad
+    \guard{G}{{\sysstate'}}{\ppol{\policy}{\args}}{\ppol{\policy'}{\args'}} 
+}{
+    \transition{G}{\runtimestate{\sysstate}{\ppol{\policy}{\args}}}{\runtimestate{\sysstate'}{\ppol{\policy'}{\args'}}}
+}
+\end{mathpar}
+
+This semantics captures the core logical role of a guardrail: it interposes between the current system state and the next policy-controlled transition, possibly changing the deployed policy before that transition occurs. Multiple guardrails can be incorporated  by composing this interposition step in some  nondeterministic order.
+
+\input{texfiles/semantics-new}

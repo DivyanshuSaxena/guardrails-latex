@@ -1,0 +1,151 @@
+\subsection{Guardrail Description Language}\label{sec:gdl}
+
+\begin{figure}[t]
+\centering
+\small
+\fbox{
+\begin{minipage}{0.92\columnwidth}
+\textbf{Components of a guardrail in \lang:}
+\medskip
+
+\begin{tabular}{@{}ll@{}}
+{\tt \textbf{for}}    & policies to which the guardrail applies \\
+{\tt \textbf{when}}   & trigger specifying when the guardrail is evaluated \\
+{\tt \textbf{check}}  & run-time condition that should hold \\
+{\tt \textbf{action}} & response taken when the condition is violated \\
+%{\tt \textbf{ensures}} & optional local guarantee used for verification \\
+%{\tt \textbf{assert}} & optional higher-level performance objective
+\end{tabular}
+\end{minipage}
+}
+\caption{Top-level structure of a guardrail specification in \lang.}
+\label{fig:gdl-overview}
+\end{figure}
+
+\emph{Guardrail Description Language} (\lang) is a declarative language for specifying guardrails over kernel behavior. In \lang, a guardrail specification makes explicit the policy to which the guardrail applies, when it should be evaluated, what run-time condition should hold, what action should be taken when that condition fails. Optionally, it may include what local and global properties it is intended to support through verification (Section~\ref{sec:verification}). 
+Figure~\ref{fig:gdl-overview} summarizes the top-level structure of a guardrail specification in \lang using the four keywords required for guardrail specification:
+{\tt for}, {\tt when}, {\tt check}, and {\tt action}. 
+The {\tt for} clause identifies the policy or set of policies to which the guardrail applies.
+ {\tt when} specifies the trigger that determines when the guardrail is evaluated.
+Next,  {\tt check}  gives the run-time condition that should hold.
+Finally,  {\tt action}  prescribes the response taken when that condition is violated.
+% Finally, {\tt ensures} and {\tt assert} are optional clauses that connect the guardrail to the verification layer: {\tt ensures} states a local guarantee expected of the guardrail, while {\tt assert} states the higher-level performance objective to which the guardrail is meant to contribute.
+Table~\ref{tab:gdl-primitives} summarizes the key primitives from which the arguments of these clauses can be constructed. We briefly describe the core primitives provided by \lang,  in the order they are shown in Table~\ref{tab:gdl-primitives}.
+
+\begin{table}[t]
+\centering
+\small
+\renewcommand{\arraystretch}{1} % or 1.3–1.5 to taste
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{c l p{4.8cm}}
+\toprule
+%\textbf{Category} 
+& \textbf{Primitive} & \textbf{Description} \\
+\midrule
+%\multirow{2}{*}{Trigger}
+\multicolumn{3}{l}{\bf \textit{Trigger Functions}} \\
+  & $\textsf{periodic}(d)$ & Evaluate every $d$ seconds \\
+  & $\textsf{on\_call}(f)$ & Evaluate on each invocation of $f$ \\ %\textsf{KFunc} $f$ \\
+\midrule
+%\multirow{8}{1.4cm}{Inspection Objects}
+%\multirow{8}{1.4cm}{Signals}
+\multicolumn{3}{l}{\bf \textit{Inspection Objects and Observables}} \\
+  % & $\textsf{KObject}$ & Kernel object (page, process, \ldots) \\
+  % & $Set[\textsf{KObject}]$ & Collections of kernel objects \\
+  & $\mathsf k$ & Kernel object variable \\
+  & $\textsf{attribute}(x)$ & Attribute of a \textsf{KObject} or set \\
+  & $\textsf{exec\_time}(f)$ & Wall clock execution time of $f$ \\ % \textsf{KFunc} $f$ \\
+  & $\textsf{decision}(f)$ & Decision value returned by $f$\\ % \textsf{KFunc} $f$ \\
+  & $\textsf{arg}(f, \mathit{name})$ & Arg. value at an invocation of $f$ \\
+  %\textsf{KFunc} $f$ invocation \\
+  % & $\textsf{read}(\mathit{feat})$ & Read a feature from the in-kernel store \\
+  & $\textsf{read}(x)$ & Read feature x from in-kernel store \\
+  & \makecell[l]{$\textsf{avg}$/$\textsf{min}$/$\textsf{max}$/$\textsf{sum}(\cdot)$} & Aggregate an observation \\
+\midrule
+%\multirow{2}{*}{Action}
+\multicolumn{3}{l}{\bf \textit{Corrective Actions}}\\
+  & \textsf{Policy}($\pi$) & Switch to policy $\pi$ \\
+  & $\textsf{Set}(\mathit{flag},\,\mathit{val})$ & Update a control flag or parameter \\
+  & $\textsf{Report}$ & Log the violation for offline diagnosis \\
+\midrule
+\multicolumn{3}{l}{\bf \textit{Domains}}\\
+  & $\textsf k \in \textsf{KObject}$ & Kernel Objects (page, process, \ldots) \\
+%  & $K \in Set[\textsf{KObject}]$ & Sets of Kernel Objects \\
+  & $f \in \textsf{KFunc}$ & Kernel Function \\
+  & $\pi \in \Pi$ & OS Policy \\
+\bottomrule
+\end{tabular}
+\caption{Key primitives in the Guardrails Description Language.}
+\vspace{-20pt}
+\label{tab:gdl-primitives}
+\end{table}
+
+
+\paragraph{Triggers.} 
+Based on principle \#3 in \Cref{subsec:design-principles}, \lang incorporates the concept of a trigger so that users can control \emph{when} to evaluate a guardrail.
+In particular, \lang supports two types of triggers.
+The first is for the class of performance properties that specify conditions that must always hold, such as CPU utilization by kernel daemons remaining below a threshold, or memory compaction overhead staying bounded.
+Such properties are not tied to specific state transitions and are best checked at regular intervals.
+\lang captures this with the {\sf periodic}$(d)$ trigger, which fires every $d$ seconds.
+% For example, the guardrail for evaluating the accuracy of estimated benefits in CBMM (see \Cref{lst:benefit-correction}) evaluates the property every 2 seconds.
+
+The second type is for properties that evaluate the correctness or efficacy of a particular \emph{policy decision}: e.g., whether a flow-size prediction used features that are in-distribution for the model, or whether a page promotion moved a cold page into the hot tier.
+For such properties, the natural evaluation point is the moment the decision is produced -- at the invocation of the relevant kernel function.
+\lang captures this with the {\sf on\_call}$(f)$ trigger, which fires on each call to \textsf{KFunc} $f$.
+% For example, say the predictor from \Cref{fig:flux-example} is trained on only short flows, then the guardrail fires on each call to the {\tt first\_call} function that classifies the flow (see \Cref{lst:in-dist-short}).
+
+\iffalse
+There may be other properties tied to higher-level events, where the state transition of interest may be missed by periodic sampling and cannot be captured cleanly by any single function invocation.
+Such cases can be handled by encoding the event as a predicate over observations and evaluating the guardrail periodically at a sufficiently fine granularity.
+Concretely, if a guardrail is intended to enforce $\property{}$ each time an event $E$ occurs, one can equivalently specify it with a periodic trigger and the condition $E\implies\property{}$; under a sufficiently small period, $\property{}$ will be evaluated exactly when $E$ holds.
+\fi
+
+
+\paragraph{Observations and conditions.}
+As discussed earlier, guardrail conditions used inside a \texttt{check} clause must use signals that are visible to the OS at run-time. \lang realizes this requirement by allowing expression of guardrail properties using two types of {\em inspection objects}: kernel objects (\textsf{KObject}), such as pages or processes, and instrumented kernel functions (\textsf{KFunc}), which represent decision points or relevant state transitions.
+Over these objects, \lang provides primitives to derive {\em observations}.
+This includes {\tt attribute(x)} to get attributes of \textsf{KObject}s (e.g., whether a page has its {\tt dirty} bit set), %set-level attributes of $Set[\ldots]$s (e.g., number of objects in the set),
+and decisions and execution times of instrumented functions (via {\tt exec\_time(f)}, {\tt decision(f)}, and {\tt arg(f, name)}).
+Any custom metric not representable through \textsf{KObject}s or \textsf{KFunc}s can be exposed via the {\sf read}(\textit{feat}) operation, which reads a pre-populated entry from an in-kernel store.
+Note that guardrails are not responsible for collecting these features; the user must implement and maintain the relevant collection mechanisms.
+\lang also supports aggregation ({\sf avg}, {\sf min}, {\sf max}, {\sf sum}) of observations and quantification ($\forall$, $\exists$) over elements of a particular type.
+
+\paragraph{Actions.}
+When a guardrail condition fails, the system must decide how to respond. Although the space of possible responses is large, \lang deliberately exposes a narrow interface for actions, per observation \#2 from Section~\ref{subsec:design-principles}. The first action, {\tt Report}, records the violation for later diagnosis without immediately changing system behavior. The second, {\tt Set(flag, val)}, updates a control flag or parameter that affects subsequent execution. Such updates may tune policy parameters, switch operating modes, or revert the system to a safer default configuration. The third, {\tt Policy(}$\pi${\tt )}, switches to another pre-installed policy (or to the same policy but with different params).
+This restricted action interface reflects the design principles discussed earlier. 
+
+% \paragraph{Verification hooks.}
+% Although a guardrail is fundamentally a run-time check paired with an action, operators may also wish to relate a guardrail to the verification layer introduced later in the paper. For this purpose, \lang provides the optional {\tt ensures} and {\tt assert} clauses.
+% The {\tt ensures} clause specifies a local guarantee associated with the guardrail: intuitively, a property that should hold after the guardrail is evaluated, whether because the check already held or because the corrective action repaired the violation. The {\tt assert} clause specifies the higher-level performance objective to which the guardrail is meant to contribute.
+
+
+\begin{dslbox}[title={Listing~\theguardcount: Guardrail for CBMM}, glabel=lst:benefit-correction]
+for CBMM
+when periodic(2s)
+check $\forall P_i,P_j \in Set[{\sf Page}]$ (
+      read(accesses($P_i$)) > read(accesses($P_j$))
+      $\implies$ read(Benefit[$P_i$]) > read(Benefit[$P_j$])
+  )
+action $\forall P_i \in Set[{\sf Page}]$ Set$(\Delta{\sf benefit}[P_i], expr)$
+\end{dslbox}
+
+%\aditya{local objective is missing here? also, high level objective? are these optional? what does it mean to have a guardrail without ensures or assert}
+
+\begin{dslbox}[title={Listing~\theguardcount: In-distribution guardrail for FLUX}, glabel=lst:in-dist-short]
+for FLUXShortPredictor
+when on_call(first_call)
+check $agg\_net \sim$ read(ShortDist[agg_net]) $\wedge$
+      $cpu \sim$ read(ShortDist[cpu]) $\wedge \dots$
+action Set(flux_policy, FLUXLongPredictor)
+ensures flux_policy_is_safe()
+assert flux_policy_is_safe()
+\end{dslbox}
+
+%\aditya{do we have an example where local and higher level objectives are different?}
+
+
+\paragraph{Examples.}
+Above, we show two examples of %Figure~\ref{fig:gdl-examples} \aditya{broken. is this referring to the two examples above?} illustrates two 
+representative guardrails written in \lang. The first example shows the guardrail for the CBMM policy from Section~\ref{sec:motivating}. Here, the {\tt when} clause specifies that the guardrail is evaluated every two seconds. The {\tt check} clause ranges over all pairs of page regions and requires that the ordering induced by observed accesses agree with the ordering induced by the stored benefit estimates: if {\tt accesses($P_i$) > accesses($P_j$)}, then the guardrail expects {\tt read(Benefit[$P_i$]) > read(Benefit[$P_j$])}. Thus, the guardrail is not checking exact numerical accuracy, but whether the stored estimates still rank page regions consistently with observed behavior. When this condition fails, the {\tt action} clause updates the per-region correction terms {\tt $\Delta$benefit[$P_i$]}, so that future CBMM decisions are based on estimates adjusted to recent observations.
+
+The second example pertains to the  FLUX example from Section~\ref{sec:motivating}. Here, the line {\tt for FLUXShortPredictor} restricts the guardrail to executions in which the short-flow predictor is active, while {\tt when on\_call(first\_call)} specifies that the guardrail is checked whenever that predictor is invoked. The {\tt check} clause compares the current input features, such as {\tt agg\_net} and {\tt cpu}, against stored summaries of the short-flow training distribution. Thus, the guardrail does not directly check whether the model's prediction is correct; instead, it checks whether the predictor is being applied within the regime for which it was trained. When this condition fails, the {\tt action} clause switches the system to {\tt FLUXLongPredictor}. The optional {\tt ensures} and {\tt assert} clauses specify how this local run-time check is intended to connect to the verification layer (see \Cref{sec:verification}; more details about FLUX in \Cref{subsec:flux-case-study}). 

@@ -1,0 +1,43 @@
+\subsection{DSL Design Principles }\label{subsec:design-principles}
+
+The guardrail abstraction is intentionally simple, but not every run-time check or response makes a useful guardrail. In our experience, the design of a useful guardrail is constrained by what the OS can observe, what it can change online, and what can be expressed in a structured way without sacrificing efficiency.
+We distill these constraints into four principles.
+% , direct the design of our proposed Guardrail Description Language (\lang), which we present in Section~\ref{sec:gdl}. %We distill them into four design principles.
+
+\medskip\noindent
+{\it \textbf{1.  Guardrail checks must use quantities observable at run time within the OS.}}
+As discussed in Section~\ref{sec:motivating}, the true performance objective is often not directly observable at the point where the policy must act. Therefore, \lang is built around signals that are directly visible inside the OS rather than around arbitrary end-to-end predicates. %Guardrails must therefore be written over kernel-visible observations that can serve as practical proxies for that objective.
+
+\iffalse
+\paragraph{1. Performance properties must rely on signals observable at run-time within the OS.}
+A guardrail is only useful if the OS can evaluate its condition during execution. This rules out many commonly-used performance objectives, such as application-level SLOs that require external measurement. For instance, a guardrail for CBMM (\Cref{fig:cbmm-example}), may state that the 99th-percentile execution time of a workload should remain below 500\,ms.
+However, such a target is difficult for the OS to evaluate directly at run-time because it depends on application-level metrics and therefore crosses the application--OS interface. In contrast, an OS guardrail can directly monitor signals such as hugepage allocator latency. A more appropriate specification, then, is that the average or tail latency of the kernel functions responsible for hugepage allocation remain below a threshold.
+Therefore, \lang is built around signals that are directly visible inside the OS rather than around arbitrary end-to-end predicates.
+
+
+\paragraph{2. Guardrails must expose policy-specific checks through a structured interface.}
+Different policies fail in different ways. A hugepage-promotion policy may rely on the continued validity of profiled benefit estimates; a learned scheduler may rely on in-distribution inputs; a memory-management subsystem may need to ensure that its own overhead remains bounded. A useful guardrail mechanism must therefore be flexible enough to express policy-specific conditions. At the same time, it cannot simply expose arbitrary monitoring code, since that would undermine analyzability, efficiency, and portability across policies. The language should instead provide a structured interface for expressing checks over a bounded set of run-time objects and observations. This principle motivates the use of domain-specific primitives in \lang rather than an unrestricted general-purpose specification language.
+\fi
+
+\medskip\noindent
+{\it \textbf{2. Corrective actions must be lightweight and deployable at run-time.}}
+A corrective action is only useful if it can be applied at run time without disrupting the system. Actions that require rebuilding the kernel, rebooting the machine, or retraining a model offline are too coarse to serve as guardrail responses.
+Similarly, actions whose cost grows with unbounded execution history are poor candidates for continuous deployment. For instance, an action for the CBMM policy in Section~\ref{sec:motivating} %\Cref{fig:cbmm-example} 
+that invokes a complex algorithm (e.g., a solver), can be expensive to execute at run-time.
+More generally, useful responses act through live control points: they update a tunable parameter, switch among pre-installed policies, or trigger a bounded-cost fallback. \lang uses this principle to expose a narrow action interface rather than arbitrary recovery logic.
+
+\medskip\noindent
+{\it \textbf{3. Guardrail checks should allow trade-offs between monitoring fidelity and overheads.}}
+While in principle, a guardrail can be evaluated at any point during the execution of an OS policy, there is a cost associated with evaluating it -- of reading the relevant state, computing the guardrail property, and taking the action (if needed).
+Therefore, the question is {\it when should the system incur the cost of evaluating a guardrail?}
+Thus, \lang allows users to control this overhead by specifying explicit {\em triggers}, which determine \emph{when} the system should check the guardrail property.
+
+\medskip\noindent
+{\it \textbf{4. Guardrails should allow expression of the intended connection between local checks and global objectives.}}
+Since guardrail conditions are local and run-time monitorable, they are often only proxies for true performance goals. The abstraction should therefore include a way to state the higher-level objective, so that this connection can be reasoned about explicitly. To address this, our framework allows operators to specify, in addition to the guardrail, a high-level objective (\perfsafety in \Cref{fig:framework-overview}). \lang provides the primitives of {\tt ensures} and {\tt assert} to allow this specification (discussed in \Cref{sec:verification}).
+
+%\paragraph{4. Guardrails should allow relating run-time performance properties to a high-level objectives.} Since guardrails only have run-time monitorable properties and actions, it is important to check whether these properties and actions meet some desirable high-level objective.
+% To address this, our framework allows operators to specify, in addition to the guardrail, a high-level objective (\perfsafety in \Cref{fig:framework-overview}). \lang provides the primitives of {\tt ensures} and {\tt assert} to allow this specification (as we discuss next).
+
+
+% \paragraph{Summary.}  These principles suggest a language design that is deliberately narrow in some respects and expressive in others. In particular, the DSL should be narrow enough to ensure that guardrail conditions are monitorable, actions are lightweight, and specifications can be compiled into efficient run-time monitors. But it should also be expressive enough to capture the diverse failure modes of modern OS policies.
